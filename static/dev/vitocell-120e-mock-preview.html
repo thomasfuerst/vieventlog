@@ -39,6 +39,19 @@
             font-weight: 700;
         }
 
+        .preview-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 14px;
+        }
+
+        .refresh-badge {
+            color: #a7f3d0;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
         @media (max-width: 600px) {
             body { padding: 10px; }
             .preview-heading { align-items: flex-start; flex-direction: column; }
@@ -49,7 +62,10 @@
     <main class="preview-shell">
         <header class="preview-heading">
             <h1>Vitocal 200-G · Vitocell 120-E</h1>
-            <span class="mock-badge">MOCKDATEN · keine echten Anlagenwerte</span>
+            <div class="preview-meta">
+                <span class="mock-badge">MOCKDATEN · keine echten Anlagenwerte</span>
+                <span class="refresh-badge" title="Das Intervall entspricht dem Dashboard; die Beispielwerte in der Mockvorschau bleiben statisch">Dashboard-Update: 1 min</span>
+            </div>
         </header>
 
         <section class="refrigerant-visual-container" aria-label="Mock-Kältekreis und Hydraulik">
@@ -65,13 +81,13 @@
                 <div class="vitocell-panel-heading">
                     <section class="compressor-starts-mini-chart" aria-label="Mock-Verdichterstarts letzte sieben Tage">
                         <div class="compressor-starts-bars">
-                            <div class="compressor-start-day" title="Mo 12.10. · 3 Verdichterstarts&#10;05:42 · 18 min · Heizungsladung&#10;12:14 · 9 min · Warmwasserladung&#10;21:30 · 16 min · Heizungsladung&#10;Energie (Strom/Wärme kWh) · Warmwasser 0,42/1,38 · Heizung 0,61/2,14"><span class="compressor-start-date">Mo</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:43%"></div></div><span class="compressor-start-count">3</span><span class="compressor-start-energy" title="Strom/Wärme, jeweils kWh">WW 0,42/1,38 · H 0,61/2,14</span><span class="compressor-start-runtime">Ø 14 min</span></div>
-                            <div class="compressor-start-day" title="Di 13.10. · 1 Verdichterstart&#10;06:18 · 22 min · Warmwasserladung&#10;Energie (Strom/Wärme kWh) · Warmwasser 0,51/1,62 · Heizung 0,00/0,00"><span class="compressor-start-date">Di</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:14%"></div></div><span class="compressor-start-count">1</span><span class="compressor-start-energy" title="Strom/Wärme, jeweils kWh">WW 0,51/1,62 · H 0,00/0,00</span><span class="compressor-start-runtime">Ø 22 min</span></div>
-                            <div class="compressor-start-day" title="Mi 14.10. · 0 Verdichterstarts&#10;Energie (Strom/Wärme kWh) · Warmwasser 0,00/0,00 · Heizung 0,00/0,00"><span class="compressor-start-date">Mi</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:0%"></div></div><span class="compressor-start-count">0</span><span class="compressor-start-energy" title="Strom/Wärme, jeweils kWh">WW 0,00/0,00 · H 0,00/0,00</span><span class="compressor-start-runtime">Ø —</span></div>
-                            <div class="compressor-start-day" title="Do 15.10. · 7 Verdichterstarts&#10;Einzelne Starts mit Uhrzeit, Dauer und Ladeart&#10;Energie (Strom/Wärme kWh) · Warmwasser 1,24/3,72 · Heizung 0,83/2,65"><span class="compressor-start-date">Do</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:100%"></div></div><span class="compressor-start-count">7</span><span class="compressor-start-energy" title="Strom/Wärme, jeweils kWh">WW 1,24/3,72 · H 0,83/2,65</span><span class="compressor-start-runtime">Ø 11 min</span></div>
-                            <div class="compressor-start-day" title="Fr 16.10. · 2 Verdichterstarts&#10;09:03 · 14 min · Heizungsladung&#10;19:44 · 12 min · Warmwasserladung&#10;Energie (Strom/Wärme kWh) · Warmwasser 0,33/1,08 · Heizung 0,28/0,91"><span class="compressor-start-date">Fr</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:29%"></div></div><span class="compressor-start-count">2</span><span class="compressor-start-energy" title="Strom/Wärme, jeweils kWh">WW 0,33/1,08 · H 0,28/0,91</span><span class="compressor-start-runtime">Ø 13 min</span></div>
-                            <div class="compressor-start-day" title="Sa 17.10. · 0 Verdichterstarts&#10;Energie (Strom/Wärme kWh) · Warmwasser 0,00/0,00 · Heizung 0,00/0,00"><span class="compressor-start-date">Sa</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:0%"></div></div><span class="compressor-start-count">0</span><span class="compressor-start-energy" title="Strom/Wärme, jeweils kWh">WW 0,00/0,00 · H 0,00/0,00</span><span class="compressor-start-runtime">Ø —</span></div>
-                            <div class="compressor-start-day" title="So 18.10. · 0 Verdichterstarts&#10;Energie (Strom/Wärme kWh) · Warmwasser 0,00/0,00 · Heizung 0,00/0,00"><span class="compressor-start-date">So</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:0%"></div></div><span class="compressor-start-count">0</span><span class="compressor-start-energy" title="Strom/Wärme, jeweils kWh">WW 0,00/0,00 · H 0,00/0,00</span><span class="compressor-start-runtime">Ø —</span></div>
+                            <div class="compressor-start-day" title="Mo 12.10. · 3 Verdichterstarts&#10;05:42 · 18 min · Heizungsladung&#10;12:14 · 9 min · Warmwasserladung&#10;21:30 · 16 min · Heizungsladung&#10;Energie (Strom/Wärme kWh) · Gesamt 1,03/3,52 · Warmwasser 0,42/1,38 · Heizung 0,61/2,14"><span class="compressor-start-date">Mo</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:43%"></div></div><span class="compressor-start-count">3</span><span class="compressor-start-energy compressor-start-total" title="Summe Strom/Wärme, jeweils kWh">Σ 1,03/3,52</span><span class="compressor-start-energy compressor-start-dhw" title="Warmwasser, Strom/Wärme kWh">WW 0,42/1,38</span><span class="compressor-start-energy compressor-start-heating" title="Heizung, Strom/Wärme kWh">H 0,61/2,14</span><span class="compressor-start-runtime">Ø 14 min</span></div>
+                            <div class="compressor-start-day" title="Di 13.10. · 1 Verdichterstart&#10;06:18 · 22 min · Warmwasserladung&#10;Energie (Strom/Wärme kWh) · Gesamt 0,51/1,62 · Warmwasser 0,51/1,62 · Heizung 0,00/0,00"><span class="compressor-start-date">Di</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:14%"></div></div><span class="compressor-start-count">1</span><span class="compressor-start-energy compressor-start-total" title="Summe Strom/Wärme, jeweils kWh">Σ 0,51/1,62</span><span class="compressor-start-energy compressor-start-dhw" title="Warmwasser, Strom/Wärme kWh">WW 0,51/1,62</span><span class="compressor-start-energy compressor-start-heating" title="Heizung, Strom/Wärme kWh">H 0,00/0,00</span><span class="compressor-start-runtime">Ø 22 min</span></div>
+                            <div class="compressor-start-day" title="Mi 14.10. · 0 Verdichterstarts&#10;Energie (Strom/Wärme kWh) · Gesamt 0,00/0,00 · Warmwasser 0,00/0,00 · Heizung 0,00/0,00"><span class="compressor-start-date">Mi</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:0%"></div></div><span class="compressor-start-count">0</span><span class="compressor-start-energy compressor-start-total" title="Summe Strom/Wärme, jeweils kWh">Σ 0,00/0,00</span><span class="compressor-start-energy compressor-start-dhw" title="Warmwasser, Strom/Wärme kWh">WW 0,00/0,00</span><span class="compressor-start-energy compressor-start-heating" title="Heizung, Strom/Wärme kWh">H 0,00/0,00</span><span class="compressor-start-runtime">Ø —</span></div>
+                            <div class="compressor-start-day" title="Do 15.10. · 7 Verdichterstarts&#10;Einzelne Starts mit Uhrzeit, Dauer und Ladeart&#10;Energie (Strom/Wärme kWh) · Gesamt 2,07/6,37 · Warmwasser 1,24/3,72 · Heizung 0,83/2,65"><span class="compressor-start-date">Do</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:100%"></div></div><span class="compressor-start-count">7</span><span class="compressor-start-energy compressor-start-total" title="Summe Strom/Wärme, jeweils kWh">Σ 2,07/6,37</span><span class="compressor-start-energy compressor-start-dhw" title="Warmwasser, Strom/Wärme kWh">WW 1,24/3,72</span><span class="compressor-start-energy compressor-start-heating" title="Heizung, Strom/Wärme kWh">H 0,83/2,65</span><span class="compressor-start-runtime">Ø 11 min</span></div>
+                            <div class="compressor-start-day" title="Fr 16.10. · 2 Verdichterstarts&#10;09:03 · 14 min · Heizungsladung&#10;19:44 · 12 min · Warmwasserladung&#10;Energie (Strom/Wärme kWh) · Gesamt 0,61/1,99 · Warmwasser 0,33/1,08 · Heizung 0,28/0,91"><span class="compressor-start-date">Fr</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:29%"></div></div><span class="compressor-start-count">2</span><span class="compressor-start-energy compressor-start-total" title="Summe Strom/Wärme, jeweils kWh">Σ 0,61/1,99</span><span class="compressor-start-energy compressor-start-dhw" title="Warmwasser, Strom/Wärme kWh">WW 0,33/1,08</span><span class="compressor-start-energy compressor-start-heating" title="Heizung, Strom/Wärme kWh">H 0,28/0,91</span><span class="compressor-start-runtime">Ø 13 min</span></div>
+                            <div class="compressor-start-day" title="Sa 17.10. · 0 Verdichterstarts&#10;Energie (Strom/Wärme kWh) · Gesamt 0,00/0,00 · Warmwasser 0,00/0,00 · Heizung 0,00/0,00"><span class="compressor-start-date">Sa</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:0%"></div></div><span class="compressor-start-count">0</span><span class="compressor-start-energy compressor-start-total" title="Summe Strom/Wärme, jeweils kWh">Σ 0,00/0,00</span><span class="compressor-start-energy compressor-start-dhw" title="Warmwasser, Strom/Wärme kWh">WW 0,00/0,00</span><span class="compressor-start-energy compressor-start-heating" title="Heizung, Strom/Wärme kWh">H 0,00/0,00</span><span class="compressor-start-runtime">Ø —</span></div>
+                            <div class="compressor-start-day" title="So 18.10. · 0 Verdichterstarts&#10;Energie (Strom/Wärme kWh) · Gesamt 0,00/0,00 · Warmwasser 0,00/0,00 · Heizung 0,00/0,00"><span class="compressor-start-date">So</span><div class="compressor-start-track"><div class="compressor-start-bar" style="width:0%"></div></div><span class="compressor-start-count">0</span><span class="compressor-start-energy compressor-start-total" title="Summe Strom/Wärme, jeweils kWh">Σ 0,00/0,00</span><span class="compressor-start-energy compressor-start-dhw" title="Warmwasser, Strom/Wärme kWh">WW 0,00/0,00</span><span class="compressor-start-energy compressor-start-heating" title="Heizung, Strom/Wärme kWh">H 0,00/0,00</span><span class="compressor-start-runtime">Ø —</span></div>
                         </div>
                     </section>
                 </div>
@@ -95,6 +111,60 @@
                         <span class="vitocell-temp-badge vitocell-temp-badge-right" style="left:96%;top:72%" title="Fußbodenheizungs-Rücklauf">29,0 °C</span>
                         <span class="vitocell-state-badge" style="left:81.1%;top:78%" title="Mischerstellung Fußbodenheizung">Mischer 63 %</span>
                         <img class="vitocell-pump-motor" src="../img/vitocal/Fan_active.gif" alt="Fußbodenheizungspumpe aktiv" title="Fußbodenheizungspumpe aktiv" style="left:72%;top:73.2%">
+                    </div>
+                    <div class="vitocell-mobile-diagram">
+                        <div class="vitocell-mobile-sole-loop">
+                            <div class="vitocell-mobile-node">
+                                <strong>Erdsonde</strong>
+                                <span class="vitocell-mobile-temp" title="Sole-Eintritt zur Vitocal"><span>Sole-Eintritt</span><strong>13,9 °C</strong></span>
+                                <span class="vitocell-mobile-temp" title="Sole-Austritt zur Erdsonde"><span>Sole-Austritt</span><strong>10,5 °C</strong></span>
+                            </div>
+                            <div class="vitocell-mobile-flow" aria-hidden="true"><i class="hot"></i><i class="cool"></i></div>
+                            <div class="vitocell-mobile-node vitocell-mobile-heat-pump">
+                                <strong>Vitocal 200-G</strong>
+                                <span class="vitocell-mobile-pump active"><img src="../img/vitocal/Fan_active.gif" alt="">Verdichter aktiv</span>
+                            </div>
+                        </div>
+                        <div class="vitocell-mobile-flow-pair" aria-hidden="true"><i class="hot"></i><i class="cool"></i></div>
+                        <div class="vitocell-mobile-connection">HK1 · Vorlauf zum Puffer / Rücklauf zur Vitocal</div>
+                        <div class="vitocell-mobile-tank">
+                            <section class="vitocell-mobile-zone warm">
+                                <strong>Warmwasserzone</strong>
+                                <div class="vitocell-mobile-values">
+                                    <span class="vitocell-mobile-temp" title="Temperatur Warmwasserzone"><span>Speicher</span><strong>48,3 °C</strong></span>
+                                    <span class="vitocell-mobile-temp" title="Pufferheizkreis-Vorlauf"><span>HK1 Vorlauf</span><strong>48,0 °C</strong></span>
+                                </div>
+                            </section>
+                            <section class="vitocell-mobile-zone heating">
+                                <strong>Heizzone</strong>
+                                <div class="vitocell-mobile-values">
+                                    <span class="vitocell-mobile-temp" title="Temperatur Puffer oben"><span>Puffer oben</span><strong>51,4 °C</strong></span>
+                                    <span class="vitocell-mobile-temp" title="Pufferheizkreis-Rücklauf"><span>HK1 Rücklauf</span><strong>41,0 °C</strong></span>
+                                </div>
+                            </section>
+                        </div>
+                        <div class="vitocell-mobile-connection">HK2 / HK3 · Vorlauf und gemeinsamer Rücklauf</div>
+                        <div class="vitocell-mobile-circuit-flows" aria-hidden="true">
+                            <div class="vitocell-mobile-flow-pair"><i class="hot"></i><i class="cool"></i></div>
+                            <div class="vitocell-mobile-flow-pair"><i class="hot"></i><i class="cool"></i></div>
+                        </div>
+                        <div class="vitocell-mobile-circuits">
+                            <section class="vitocell-mobile-circuit">
+                                <div class="vitocell-mobile-circuit-heading"><strong>HK2 · Heizkörper</strong><span class="vitocell-mobile-pump">Pumpenstatus —</span></div>
+                                <div class="vitocell-mobile-values">
+                                    <span class="vitocell-mobile-temp" title="Heizkörper-Vorlauf"><span>Vorlauf</span><strong>42,0 °C</strong></span>
+                                    <span class="vitocell-mobile-temp" title="Heizkörper-Rücklauf"><span>Rücklauf</span><strong>34,0 °C</strong></span>
+                                </div>
+                            </section>
+                            <section class="vitocell-mobile-circuit">
+                                <div class="vitocell-mobile-circuit-heading"><strong>HK3 · Fußbodenheizung</strong><span class="vitocell-mobile-pump active"><img src="../img/vitocal/Fan_active.gif" alt="">Pumpe aktiv</span></div>
+                                <div class="vitocell-mobile-values">
+                                    <span class="vitocell-mobile-temp" title="Fußbodenheizungs-Vorlauf"><span>Vorlauf</span><strong>35,0 °C</strong></span>
+                                    <span class="vitocell-mobile-temp" title="Fußbodenheizungs-Rücklauf"><span>Rücklauf</span><strong>29,0 °C</strong></span>
+                                    <span class="vitocell-mobile-temp" title="Mischerstellung Fußbodenheizung"><span>Mischer</span><strong>63 %</strong></span>
+                                </div>
+                            </section>
+                        </div>
                     </div>
                 </div>
             </section>

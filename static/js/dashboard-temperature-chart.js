@@ -283,7 +283,7 @@ async function initTemperatureChart() {
         }
         temperatureChartRefreshInterval = setInterval(() => {
             loadTemperatureData(true);
-        }, 600000);
+        }, 60000);
     }
 }
 

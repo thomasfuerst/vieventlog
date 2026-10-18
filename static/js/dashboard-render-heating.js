@@ -478,6 +478,12 @@
                             ${hybridProControlButton}
                         </div>
                     </div>
+                    ${visualDiagram ? `
+                        <div class="temp-group">
+                            <h3 class="temp-group-title">Kältekreislauf-Visualisierung</h3>
+                            ${visualDiagram}
+                        </div>
+                    ` : ''}
                     ${tempsGroup1 ? `
                         <div class="temp-group">
                             <h3 class="temp-group-title">Außentemperaturen & Systemkreise</h3>
@@ -500,12 +506,6 @@
                         <div class="temp-group">
                             <h3 class="temp-group-title">Energiecockpit</h3>
                             <div class="temp-grid">${tempsGroup4}</div>
-                        </div>
-                    ` : ''}
-                    ${visualDiagram ? `
-                        <div class="temp-group">
-                            <h3 class="temp-group-title">Kältekreislauf-Visualisierung</h3>
-                            ${visualDiagram}
                         </div>
                     ` : ''}
                 </div>

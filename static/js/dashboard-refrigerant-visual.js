@@ -228,7 +228,7 @@ async function loadCompressorStartsMiniChart(deviceInfo) {
 
     const cacheKey = `${deviceInfo.installationId}_${deviceInfo.gatewaySerial || ''}_${deviceInfo.deviceId || ''}`;
     const cached = compressorStartsMiniCache.get(cacheKey);
-    if (cached && Date.now() - cached.loadedAt < 5 * 60 * 1000) {
+    if (cached && Date.now() - cached.loadedAt < 60 * 1000) {
         renderCompressorStartsMiniChart(container, cached.days);
         return;
     }
@@ -297,12 +297,20 @@ function renderCompressorStartsMiniChart(container, days) {
         const averageRuntime = day.averageRuntimeMs === null
             ? '—'
             : formatCompressorDuration(day.averageRuntimeMs);
-        const energySummary = `WW ${energyText(day.energy.dhw)} · H ${energyText(day.energy.heating)}`;
+        const totalEnergy = Object.values(day.energy).reduce((total, energy) => {
+            total.electricityKwh += energy.electricityKwh;
+            total.thermalKwh += energy.thermalKwh;
+            total.hasElectricity ||= energy.hasElectricity;
+            total.hasThermal ||= energy.hasThermal;
+            return total;
+        }, { electricityKwh: 0, thermalKwh: 0, hasElectricity: false, hasThermal: false });
         return `<div class="compressor-start-day" title="${title}">
             <span class="compressor-start-date">${day.weekday}</span>
             <div class="compressor-start-track"><div class="compressor-start-bar" style="width:${width}%"></div></div>
             <span class="compressor-start-count">${value}</span>
-            <span class="compressor-start-energy" title="Stromverbrauch / Wärmeerzeugung, jeweils kWh">${energySummary}</span>
+            <span class="compressor-start-energy compressor-start-total" title="Summe der erfassten Stromverbräuche / Wärmemengen in kWh">Σ ${energyText(totalEnergy)}</span>
+            <span class="compressor-start-energy compressor-start-dhw" title="Warmwasser: Stromverbrauch / Wärmemenge in kWh">WW ${energyText(day.energy.dhw)}</span>
+            <span class="compressor-start-energy compressor-start-heating" title="Heizung: Stromverbrauch / Wärmemenge in kWh">H ${energyText(day.energy.heating)}</span>
             <span class="compressor-start-runtime" title="Mittlere Verdichterlaufzeit je Start">Ø ${averageRuntime}</span>
         </div>`;
     }).join('');
@@ -366,9 +374,22 @@ function renderVitocellHydraulics(keyFeatures, compressorActive, activeFeed) {
         if (state !== true) return '';
         return `<img class="vitocell-pump-motor" src="/static/img/vitocal/Fan_active.gif" alt="${position.title}: Pumpe aktiv" title="${position.title}: Heizkreispumpe aktiv" style="${style}">`;
     }).join('');
+    const mobileTemperature = (feature, label, unit = '°C') => {
+        const value = numericFeatureValue(feature);
+        return `<span class="vitocell-mobile-temp" title="${label}"><span>${label}</span><strong>${value === null ? '—' : `${value.toFixed(1)} ${unit}`}</strong></span>`;
+    };
+    const mobilePumpStatus = circuit => {
+        const state = getHeatingPumpState(circuit.pumpStatus, circuit.pumpSpeed);
+        const label = state === true ? 'Pumpe aktiv' : state === false ? 'Pumpe aus' : 'Pumpenstatus —';
+        const icon = state === true ? '<img src="/static/img/vitocal/Fan_active.gif" alt="">' : '';
+        return `<span class="vitocell-mobile-pump${state === true ? ' active' : ''}">${icon}${label}</span>`;
+    };
     const activeFeedLabel = activeFeed === 'dhw' ? 'Warmwasserladung' : activeFeed === 'heating' ? 'Heizbetrieb' : '';
     const activeMotor = compressorActive && activeFeed
         ? `<img class="vitocell-active-motor" src="/static/img/vitocal/Fan_active.gif" alt="Verdichter aktiv" title="Verdichter aktiv · ${activeFeedLabel}" style="left:44%;top:${activeFeed === 'dhw' ? 22 : 68}%">`
+        : '';
+    const mobileActiveMotor = compressorActive && activeFeed
+        ? `<span class="vitocell-mobile-pump active"><img src="/static/img/vitocal/Fan_active.gif" alt="">Verdichter aktiv · ${activeFeedLabel}</span>`
         : '';
 
     return `
@@ -387,6 +408,60 @@ function renderVitocellHydraulics(keyFeatures, compressorActive, activeFeed) {
                     ${mixerBadge}
                     ${pumpIndicators}
                     ${temperatureBadges}
+                </div>
+                <div class="vitocell-mobile-diagram">
+                    <div class="vitocell-mobile-sole-loop">
+                        <div class="vitocell-mobile-node">
+                            <strong>Erdsonde</strong>
+                            ${mobileTemperature(keyFeatures.primarySupplyTemp, 'Sole-Eintritt zur Vitocal')}
+                            ${mobileTemperature(keyFeatures.primaryReturnTemp, 'Sole-Austritt zur Erdsonde')}
+                        </div>
+                        <div class="vitocell-mobile-flow" aria-hidden="true"><i class="hot"></i><i class="cool"></i></div>
+                        <div class="vitocell-mobile-node vitocell-mobile-heat-pump">
+                            <strong>Vitocal 200-G</strong>
+                            ${mobileActiveMotor}
+                        </div>
+                    </div>
+                    <div class="vitocell-mobile-flow-pair" aria-hidden="true"><i class="hot"></i><i class="cool"></i></div>
+                    <div class="vitocell-mobile-connection">HK1 · Vorlauf zum Puffer / Rücklauf zur Vitocal</div>
+                    <div class="vitocell-mobile-tank">
+                        <section class="vitocell-mobile-zone warm">
+                            <strong>Warmwasserzone</strong>
+                            <div class="vitocell-mobile-values">
+                                ${mobileTemperature(keyFeatures.dhwTemp, 'Speichertemperatur')}
+                                ${mobileTemperature(circuits[0]?.supplyTemp, 'HK1 Vorlauf')}
+                            </div>
+                        </section>
+                        <section class="vitocell-mobile-zone heating">
+                            <strong>Heizzone</strong>
+                            <div class="vitocell-mobile-values">
+                                ${mobileTemperature(keyFeatures.bufferTempTop, 'Puffer oben')}
+                                ${mobileTemperature(circuits[0]?.returnTemp, 'HK1 Rücklauf')}
+                            </div>
+                        </section>
+                    </div>
+                    <div class="vitocell-mobile-connection">HK2 / HK3 · Vorlauf und gemeinsamer Rücklauf</div>
+                    <div class="vitocell-mobile-circuit-flows" aria-hidden="true">
+                        <div class="vitocell-mobile-flow-pair"><i class="hot"></i><i class="cool"></i></div>
+                        <div class="vitocell-mobile-flow-pair"><i class="hot"></i><i class="cool"></i></div>
+                    </div>
+                    <div class="vitocell-mobile-circuits">
+                        <section class="vitocell-mobile-circuit">
+                            <div class="vitocell-mobile-circuit-heading"><strong>HK2 · Heizkörper</strong>${mobilePumpStatus(circuits[1] || {})}</div>
+                            <div class="vitocell-mobile-values">
+                                ${mobileTemperature(circuits[1]?.supplyTemp, 'Vorlauf')}
+                                ${mobileTemperature(circuits[1]?.returnTemp, 'Rücklauf')}
+                            </div>
+                        </section>
+                        <section class="vitocell-mobile-circuit">
+                            <div class="vitocell-mobile-circuit-heading"><strong>HK3 · Fußbodenheizung</strong>${mobilePumpStatus(circuits[2] || {})}</div>
+                            <div class="vitocell-mobile-values">
+                                ${mobileTemperature(circuits[2]?.supplyTemp, 'Vorlauf')}
+                                ${mobileTemperature(circuits[2]?.returnTemp, 'Rücklauf')}
+                                ${mobileTemperature(circuits[2]?.mixerPosition, 'Mischerstellung', '%')}
+                            </div>
+                        </section>
+                    </div>
                 </div>
             </div>
         </section>

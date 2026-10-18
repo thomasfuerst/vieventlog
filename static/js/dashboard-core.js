@@ -149,10 +149,15 @@
             console.log('Final currentDeviceId:', currentDeviceId);
         }
 
-        async function loadDashboard(forceRefresh = false) {
+        async function loadDashboard(forceRefresh = false, preserveScrollPosition = false) {
             const contentDiv = document.getElementById('dashboardContent');
-            contentDiv.className = 'loading';
-            contentDiv.innerHTML = '<div class="spinner"></div><p>Lade Dashboard-Daten...</p>';
+            const scrollPosition = preserveScrollPosition
+                ? { x: window.scrollX, y: window.scrollY }
+                : null;
+            if (!preserveScrollPosition) {
+                contentDiv.className = 'loading';
+                contentDiv.innerHTML = '<div class="spinner"></div><p>Lade Dashboard-Daten...</p>';
+            }
 
             try {
                 // Get current device to extract gateway serial
@@ -206,6 +211,10 @@
                 // Load hybrid pro control settings if available
                 await loadSavedHybridProControlSettings(currentDevice.accountId, currentDevice.installationId, currentDevice.deviceId);
 
+                if (scrollPosition) {
+                    scrollPosition.x = window.scrollX;
+                    scrollPosition.y = window.scrollY;
+                }
                 renderDashboard(features);
                 updateLastUpdate();
 
@@ -215,8 +224,18 @@
                 }
 
             } catch (error) {
+                if (scrollPosition) {
+                    scrollPosition.x = window.scrollX;
+                    scrollPosition.y = window.scrollY;
+                }
                 showError('Fehler beim Laden der Features: ' + error.message);
-                contentDiv.innerHTML = '<div class="error">Fehler beim Laden der Daten: ' + error.message + '</div>';
+                if (!preserveScrollPosition) {
+                    contentDiv.innerHTML = '<div class="error">Fehler beim Laden der Daten: ' + error.message + '</div>';
+                }
+            } finally {
+                if (scrollPosition) {
+                    setTimeout(() => window.scrollTo(scrollPosition.x, scrollPosition.y), 500);
+                }
             }
         }
 
@@ -479,8 +498,8 @@
                 clearInterval(autoRefreshInterval);
             }
             autoRefreshInterval = setInterval(() => {
-                loadDashboard();
-            }, 600000); // Every 10 minutes
+                loadDashboard(false, true);
+            }, 60000); // Every minute
         }
 
         // Event Listeners

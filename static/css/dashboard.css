@@ -804,7 +804,7 @@
         @media (max-width: 768px) {
             body {
                 padding: 10px;
-                width: 100vw;
+                width: 100%;
                 overflow-x: hidden;
             }
 
@@ -910,7 +910,7 @@
             }
 
             .dashboard-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
                 gap: 15px;
                 width: 100%;
                 max-width: 100%;
@@ -960,7 +960,7 @@
             }
 
             .temp-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 10px;
                 width: 100%;
             }
@@ -1517,7 +1517,7 @@
     }
 
     .consumption-charts {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .breakdown-table {
@@ -1573,10 +1573,14 @@
 
 .compressor-start-day {
     display: grid;
-    grid-template-columns: 22px minmax(40px, 0.35fr) 18px minmax(160px, 1fr) 48px;
+    grid-template-columns: 22px minmax(35px, 0.65fr) 16px repeat(3, minmax(54px, 1fr)) 44px;
     min-width: 0;
     align-items: center;
-    gap: 4px;
+    column-gap: 8px;
+}
+
+.compressor-start-track {
+    margin-right: -6px;
 }
 
 .compressor-start-count {
@@ -1615,6 +1619,24 @@
     font-variant-numeric: tabular-nums;
     text-overflow: clip;
     white-space: nowrap;
+}
+
+.compressor-start-total,
+.compressor-start-dhw,
+.compressor-start-heating {
+    text-align: right;
+}
+
+@media (max-width: 480px) {
+    .compressor-start-day {
+        grid-template-columns: 18px minmax(24px, 0.65fr) 14px repeat(3, minmax(49px, 1fr)) 40px;
+        column-gap: 5px;
+    }
+
+    .compressor-start-track {
+        margin-right: -3px;
+    }
+
 }
 
 .compressor-start-runtime {
@@ -1680,6 +1702,10 @@
     width: 100%;
     min-width: 0;
     aspect-ratio: 1360 / 500;
+}
+
+.vitocell-mobile-diagram {
+    display: none;
 }
 
 .vitocell-hydraulic-diagram img {
@@ -1769,8 +1795,230 @@
 }
 
 @media (max-width: 640px) {
+    .vitocell-hydraulic-scroll {
+        overflow-x: visible;
+    }
+
     .vitocell-hydraulic-diagram {
-        min-width: 760px;
+        display: none;
+    }
+
+    .vitocell-mobile-diagram {
+        display: grid;
+        gap: 8px;
+    }
+
+    .vitocell-mobile-sole-loop {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr);
+        align-items: stretch;
+        gap: 5px;
+    }
+
+    .vitocell-mobile-node,
+    .vitocell-mobile-circuit {
+        min-width: 0;
+        padding: 7px;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        border-radius: 6px;
+        background: rgba(15, 23, 42, 0.85);
+    }
+
+    .vitocell-mobile-node {
+        display: grid;
+        align-content: start;
+        gap: 6px;
+        border-top: 3px solid #38bdf8;
+    }
+
+    .vitocell-mobile-heat-pump {
+        border-top-color: #fb923c;
+    }
+
+    .vitocell-mobile-node > strong,
+    .vitocell-mobile-circuit-heading > strong {
+        font-size: 11px;
+    }
+
+    .vitocell-mobile-flow {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 7px;
+    }
+
+    .vitocell-mobile-flow i {
+        position: relative;
+        height: 2px;
+        background: #fb923c;
+    }
+
+    .vitocell-mobile-flow i::after {
+        position: absolute;
+        top: -3px;
+        right: -1px;
+        width: 0;
+        height: 0;
+        border-top: 4px solid transparent;
+        border-bottom: 4px solid transparent;
+        border-left: 5px solid #fb923c;
+        content: "";
+    }
+
+    .vitocell-mobile-flow i.cool {
+        background: #38bdf8;
+    }
+
+    .vitocell-mobile-flow i.cool::after {
+        right: auto;
+        left: -1px;
+        border-right: 5px solid #38bdf8;
+        border-left: 0;
+    }
+
+    .vitocell-mobile-flow-pair {
+        display: flex;
+        height: 18px;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .vitocell-mobile-flow-pair i {
+        position: relative;
+        width: 2px;
+        height: 14px;
+        background: #fb923c;
+    }
+
+    .vitocell-mobile-flow-pair i::after {
+        position: absolute;
+        left: -3px;
+        width: 0;
+        height: 0;
+        content: "";
+    }
+
+    .vitocell-mobile-flow-pair i.hot::after {
+        bottom: -1px;
+        border-top: 5px solid #fb923c;
+        border-right: 4px solid transparent;
+        border-left: 4px solid transparent;
+    }
+
+    .vitocell-mobile-flow-pair i.cool {
+        background: #38bdf8;
+    }
+
+    .vitocell-mobile-flow-pair i.cool::after {
+        top: -1px;
+        border-right: 4px solid transparent;
+        border-bottom: 5px solid #38bdf8;
+        border-left: 4px solid transparent;
+    }
+
+    .vitocell-mobile-temp {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+        color: #94a3b8;
+        font-size: 9px;
+        line-height: 1.2;
+    }
+
+    .vitocell-mobile-temp strong {
+        color: #f8fafc;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .vitocell-mobile-pump {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: #cbd5e1;
+        font-size: 9px;
+        font-weight: 600;
+    }
+
+    .vitocell-mobile-pump.active {
+        color: #bbf7d0;
+    }
+
+    .vitocell-mobile-pump img {
+        width: 14px;
+        height: 14px;
+        object-fit: contain;
+    }
+
+    .vitocell-mobile-connection {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: #94a3b8;
+        font-size: 9px;
+        text-align: center;
+    }
+
+    .vitocell-mobile-connection::before,
+    .vitocell-mobile-connection::after {
+        width: 16px;
+        height: 1px;
+        background: rgba(148, 163, 184, 0.45);
+        content: "";
+    }
+
+    .vitocell-mobile-tank {
+        overflow: hidden;
+        border: 1px solid rgba(203, 213, 225, 0.45);
+        border-radius: 12px;
+        background: #111827;
+    }
+
+    .vitocell-mobile-zone {
+        display: grid;
+        gap: 7px;
+        padding: 10px;
+    }
+
+    .vitocell-mobile-zone.warm {
+        background: linear-gradient(180deg, rgba(251, 146, 60, 0.22), rgba(234, 88, 12, 0.12));
+    }
+
+    .vitocell-mobile-zone.heating {
+        border-top: 2px dashed rgba(226, 232, 240, 0.7);
+        background: linear-gradient(180deg, rgba(56, 189, 248, 0.16), rgba(3, 105, 161, 0.2));
+    }
+
+    .vitocell-mobile-zone > strong {
+        font-size: 11px;
+    }
+
+    .vitocell-mobile-values {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+    }
+
+    .vitocell-mobile-circuits {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .vitocell-mobile-circuit-flows {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .vitocell-mobile-circuit-heading {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 5px;
+        margin-bottom: 7px;
     }
 }
 
