@@ -32,6 +32,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build Linux ARMv6 Binary
+        env:
+          GOOS: linux
+          GOARCH: arm
+          GOARM: "6"
+          CGO_ENABLED: "0"
+        run: |
+          mkdir -p dist
+          go build -trimpath -tags nokeyring -ldflags "-s -w" -o dist/vieventlog-linux-armv6 .
+
       - name: Upload Linux AMD64 Binary
         uses: actions/upload-artifact@v4
         with:
@@ -44,6 +54,13 @@ jobs:
         with:
           name: vieventlog-linux-arm64
           path: dist/desktop_linux_arm64/vieventlog
+          retention-days: 7
+
+      - name: Upload Linux ARMv6 Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: vieventlog-linux-armv6
+          path: dist/vieventlog-linux-armv6
           retention-days: 7
 
       - name: Upload Windows AMD64 Binary

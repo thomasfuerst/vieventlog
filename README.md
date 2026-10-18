@@ -159,6 +159,27 @@ Nach erfolgreicher Kompilierung erhalten Sie eine ausführbare Datei `vieventlog
 
 **Hinweis:** Die vorkompilierten Binaries von GitHub Releases verwenden **keine Keyring-Integration** (um Cross-Platform-Builds zu ermöglichen). Sie nutzen automatisch Environment Variables oder File-Storage für Credentials. Wenn Sie Keyring-Support benötigen, kompilieren Sie bitte lokal aus dem Quellcode.
 
+### Raspberry Pi 1 B+ (ARMv6): Build und Deployment
+
+Der Raspberry Pi 1 B+ verwendet ARMv6. Das PowerShell-Skript erstellt ein passendes 32-Bit-Linux-Binary mit `GOARM=6` und ohne Keyring-Unterstützung. Go muss unter Windows installiert sein; die Cross-Kompilierung erfolgt lokal.
+
+Im Projektverzeichnis in PowerShell:
+
+```powershell
+# Nur bauen; Ausgabe: dist/vieventlog-linux-armv6
+.\scripts\build-deploy-pi.ps1
+
+# Bauen und direkt auf pi@PiHeizung deployen
+.\scripts\build-deploy-pi.ps1 -Deploy
+
+# Erstinstallation: systemd-Dienst und Datenverzeichnis anlegen, dann deployen
+.\scripts\build-deploy-pi.ps1 -Deploy -InstallService
+```
+
+Für ein anderes SSH-Ziel kann `-Target 'benutzer@host'` angegeben werden. Das Skript verwendet Windows OpenSSH (`ssh.exe` und `scp.exe`). SSH- und sudo-Passwörter werden bei Bedarf interaktiv im Terminal abgefragt und nicht gespeichert. Da Upload und Remote-Installation getrennte SSH-Verbindungen verwenden, kann die Passwortabfrage mehrfach erscheinen.
+
+Für ein Update muss `vieventlog.service` mit `/usr/bin/vieventlog` bereits vorhanden sein. Bei der Erstinstallation `-InstallService` ergänzen; die Option richtet den Dienstbenutzer und das Datenverzeichnis ein und installiert die vorhandene systemd-Unit. Ein vorhandenes `/etc/default/vieventlog` bleibt unangetastet; fehlt es, wird das Repository-Template angelegt. SSH-Benutzer `pi` benötigt sudo-Rechte. `python3` wird für die abschließende Prüfung von `/health` benötigt. Das Skript sichert ein vorhandenes Binary, aktualisiert es atomar und rollt bei fehlgeschlagener Dienst- oder Health-Prüfung zurück. Bei fehlgeschlagener Erstinstallation wird der Dienst gestoppt und deaktiviert; angelegte Konfigurationsdateien bleiben zur Diagnose erhalten. Das APT-Repository bietet weiterhin nur amd64 und arm64; ARMv6 wird über dieses Skript oder das ARMv6-CI-Artefakt bereitgestellt.
+
 ### Option 3: APT-Repository (Ubuntu/Debian/Raspberry Pi OS) ⭐ EMPFOHLEN
 
 **Ideal für Produktivserver und Raspberry Pi Installationen**

@@ -383,6 +383,7 @@ func fetchInstallationIDs() error {
 		}
 
 		q := req.URL.Query()
+		q.Add("includeGateways", "true")
 		q.Add("limit", "1000") // Max allowed by API
 		if cursor != "" {
 			q.Add("cursor", cursor)
