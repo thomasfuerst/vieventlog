@@ -97,6 +97,7 @@ jobs:
 
             - [Linux AMD64](https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId})
             - [Linux ARM64](https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId})
+            - [Linux ARMv6 (Raspberry Pi 1)](https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId})
             - [Windows AMD64](https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId})
             - [macOS AMD64](https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId})
             - [macOS ARM64](https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId})

@@ -76,13 +76,10 @@ func deviceSettingsGetHandler(w http.ResponseWriter, r *http.Request) {
 		showRefrigerantVisualPtr = &defaultTrue
 	}
 
-	// Include UseOtherRefrigerantPic (default: false if not set)
+	// Leave the picture choice unset so the dashboard can select by model.
 	var useOtherRefrigerantPicPtr *bool
 	if settings.UseOtherRefrigerantPic != nil {
 		useOtherRefrigerantPicPtr = settings.UseOtherRefrigerantPic
-	} else {
-		defaultFalse := false
-		useOtherRefrigerantPicPtr = &defaultFalse
 	}
 
 	// Schedules are shown by default

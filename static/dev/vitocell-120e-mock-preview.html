@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vitocal 200-G · Vitocell 120-E Mock</title>
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 20px;
+            background: #101827;
+            color: #f8fafc;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        .preview-shell {
+            width: min(1100px, 100%);
+            margin: 0 auto;
+        }
+
+        .preview-heading {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 0 0 14px;
+        }
+
+        .preview-heading h1 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .mock-badge {
+            color: #fde68a;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .preview-heading { align-items: flex-start; flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <main class="preview-shell">
+        <header class="preview-heading">
+            <h1>Vitocal 200-G · Vitocell 120-E</h1>
+            <span class="mock-badge">MOCKDATEN · keine echten Anlagenwerte</span>
+        </header>
+
+        <section class="refrigerant-visual-container" aria-label="Mock-Kältekreis und Hydraulik">
+            <div class="refrigerant-diagram">
+                <img class="base-diagram" src="../img/vitocal/WMPrefrigerant.jpg" alt="Sole/Wasser-Kältekreislauf">
+                <span class="value-label" style="top:16%;left:80%" title="Sole-Eintritt zur Vitocal 200-G">13,9 °C</span>
+                <span class="value-label" style="top:84%;left:80%" title="Sole-Austritt zur Erdsonde">10,5 °C</span>
+                <span class="value-label" style="top:25%;left:39%" title="Verdichter Heißgastemperatur">78,2 °C</span>
+                <span class="value-label" style="top:12%;left:55%" title="Verdichter Sauggastemperatur">25,4 °C</span>
+            </div>
+
+            <section class="vitocell-hydraulic-panel" aria-label="Vitocell 120-E und Heizkreise">
+                <div class="vitocell-panel-heading">
+                    <h3>Vitocell 120-E · Schichtenspeicher und Heizkreise</h3>
+                    <span class="vitocell-compressor-status active">Verdichter aktiv · Warmwasserladung</span>
+                </div>
+                <div class="vitocell-hydraulic-scroll">
+                    <div class="vitocell-hydraulic-diagram">
+                        <img src="../img/vitocal/Vitocell120eHydraulik.svg"
+                                alt="Solekreis und Vitocell 120-E mit Warmwasserzone, Heizzone, Heizkörper- und Fußbodenheizkreis">
+                        <img class="vitocell-active-motor" src="../img/vitocal/Fan_active.gif"
+                                alt="Verdichter aktiv"
+                                title="Verdichter aktiv · Warmwasserladung"
+                             style="left:44%;top:22%">
+                        <span class="vitocell-temp-badge" style="left:19%;top:38%" title="Sole-Eintritt zur Vitocal">13,9 °C</span>
+                        <span class="vitocell-temp-badge" style="left:19%;top:47%" title="Sole-Austritt zur Erdsonde">10,5 °C</span>
+                        <span class="vitocell-temp-badge" style="left:50.4%;top:15%" title="Temperatur Warmwasserzone">48,3 °C</span>
+                        <span class="vitocell-temp-badge" style="left:50.4%;top:70%" title="Temperatur Puffer oben · Heizzone">51,4 °C</span>
+                        <span class="vitocell-temp-badge" style="left:41.5%;top:16%" title="Pufferheizkreis-Vorlauf · Warmwasserzone">48,0 °C</span>
+                        <span class="vitocell-temp-badge" style="left:39%;top:79%" title="Pufferheizkreis-Rücklauf">41,0 °C</span>
+                        <span class="vitocell-temp-badge" style="left:67%;top:26%" title="Heizkörper-Vorlauf">42,0 °C</span>
+                        <span class="vitocell-temp-badge vitocell-temp-badge-right" style="left:96%;top:46%" title="Heizkörper-Rücklauf">34,0 °C</span>
+                        <span class="vitocell-temp-badge" style="left:67%;top:68%" title="Fußbodenheizungs-Vorlauf">35,0 °C</span>
+                        <span class="vitocell-temp-badge vitocell-temp-badge-right" style="left:96%;top:72%" title="Fußbodenheizungs-Rücklauf">29,0 °C</span>
+                        <span class="vitocell-state-badge" style="left:81.1%;top:78%" title="Mischerstellung Fußbodenheizung">Mischer 63 %</span>
+                        <img class="vitocell-pump-motor" src="../img/vitocal/Fan_active.gif" alt="Fußbodenheizungspumpe aktiv" title="Fußbodenheizungspumpe aktiv" style="left:72%;top:73.2%">
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+</body>
+</html>

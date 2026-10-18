@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1360 500" role="img" aria-labelledby="title description">
+  <title id="title">Vitocal 200-G, Solekreis und Vitocell 120-E</title>
+  <desc id="description">Schematischer Solekreis zwischen Erdsonde und Vitocal 200-G, Vitocell-Schichtenspeicher mit großer Warmwasserzone und kleiner Heizzone, Heizkörper- und Fußbodenheizkreis.</desc>
+  <defs>
+    <linearGradient id="tank" x1="0" x2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="0.5" stop-color="#1e293b"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="warm" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fb923c" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#ea580c" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="heat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#38bdf8" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#0369a1" stop-opacity="0.8"/>
+    </linearGradient>
+    <marker id="arrow-hot" markerWidth="2" markerHeight="2" refX="1.5" refY="1" orient="auto">
+      <path d="M0,0 L2,1 L0,2 Z" fill="#fb923c"/>
+    </marker>
+    <marker id="arrow-cool" markerWidth="2" markerHeight="2" refX="1.5" refY="1" orient="auto">
+      <path d="M0,0 L2,1 L0,2 Z" fill="#38bdf8"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", Arial, sans-serif; fill: #f8fafc; }
+      .small { font-size: 18px; fill: #cbd5e1; }
+      .label { font-size: 20px; font-weight: 700; }
+      .pipe-hot { fill: none; stroke: #fb923c; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+      .pipe-cool { fill: none; stroke: #38bdf8; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+      .box { fill: #111827; stroke: #64748b; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect x="1" y="1" width="1358" height="498" rx="18" fill="#0b1220" stroke="#263548" stroke-width="2"/>
+
+  <!-- Primary brine loop between ground source and heat pump. -->
+  <rect class="box" x="24" y="190" width="205" height="100" rx="14"/>
+  <text class="label" x="126" y="232" text-anchor="middle">Erdsonde</text>
+
+  <rect class="box" x="286" y="190" width="205" height="100" rx="14"/>
+  <text class="label" x="388" y="232" text-anchor="middle">Vitocal 200-G</text>
+
+  <path class="pipe-hot" d="M229 215 H286" marker-end="url(#arrow-hot)"/>
+  <path class="pipe-cool" d="M286 265 H229" marker-end="url(#arrow-cool)"/>
+
+  <!-- Vitocell stratification: warm-water zone occupies about two thirds. -->
+  <rect x="590" y="42" width="190" height="416" rx="42" fill="url(#tank)" stroke="#cbd5e1" stroke-width="4"/>
+  <path d="M596 94 Q596 50 634 48 H736 Q774 50 774 94 V310 H596 Z" fill="url(#warm)"/>
+  <path d="M596 322 H774 V408 Q774 452 734 452 H636 Q596 452 596 408 Z" fill="url(#heat)"/>
+  <path d="M596 316 H774" stroke="#e2e8f0" stroke-width="3" stroke-dasharray="8 7"/>
+  <text class="label" x="685" y="168" text-anchor="middle">Warmwasserzone</text>
+  <text class="label" x="685" y="395" text-anchor="middle">Heizzone</text>
+
+  <!-- HK1 is the dedicated buffer charging circuit. -->
+  <path class="pipe-hot" d="M491 210 H530" marker-end="url(#arrow-hot)"/>
+  <path class="pipe-hot" d="M530 210 V110 H590"/>
+  <path class="pipe-hot" d="M530 210 V338 H590"/>
+  <path class="pipe-cool" d="M590 425 H388.5 V290" marker-end="url(#arrow-cool)"/>
+
+  <!-- Shared supply header with separate branches to the heating circuits. -->
+  <path class="pipe-hot" d="M780 338 H866 V154 H1000" marker-end="url(#arrow-hot)"/>
+  <path class="pipe-hot" d="M866 338 V366 H1000" marker-end="url(#arrow-hot)"/>
+
+  <!-- Radiator branch and return to the outer collector. -->
+  <rect class="box" x="1000" y="112" width="205" height="84" rx="14"/>
+  <text class="label" x="1102.5" y="160" text-anchor="middle">Heizkörper</text>
+  <path class="pipe-cool" d="M1205 178 H1320 V390"/>
+
+  <!-- Underfloor branch -->
+  <rect class="box" x="1000" y="324" width="205" height="84" rx="14"/>
+  <text class="label" x="1102.5" y="359" text-anchor="middle">Fußbodenheizung</text>
+  <path class="pipe-cool" d="M1205 390 H1320 V470"/>
+
+  <!-- Shared outer return collector runs right and below both circuits back to the buffer. -->
+  <path class="pipe-cool" d="M1320 470 H810 Q780 470 780 440 V425" marker-end="url(#arrow-cool)"/>
+</svg>

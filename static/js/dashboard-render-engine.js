@@ -401,6 +401,19 @@
                 return results;
             };
 
+            const findCircuitFeature = (apiIndex, pattern) => {
+                const prefix = `heating.circuits.${apiIndex}.`;
+                for (const category of [features.circuits, features.temperatures, features.other]) {
+                    for (const [name, feature] of Object.entries(category || {})) {
+                        if (name.startsWith(prefix) && pattern.test(name) &&
+                            feature.value !== null && feature.value !== undefined) {
+                            return feature;
+                        }
+                    }
+                }
+                return null;
+            };
+
             return {
                 // Temperatures
                 outsideTemp: find(['heating.sensors.temperature.outside'], ['outside']),
@@ -413,6 +426,30 @@
  // not an API Data Point               secondaryReturnTemp: find(['heating.secondaryCircuit.sensors.temperature.return', 'heating.sensors.temperature.return']),
                 bufferTemp: find(['heating.buffer.sensors.temperature.main', 'heating.bufferCylinder.sensors.temperature.main']),
                 bufferTempTop: find(['heating.buffer.sensors.temperature.top', 'heating.bufferCylinder.sensors.temperature.top']),
+                heatingCircuits: [0, 1, 2].map(apiIndex => {
+                    const prefix = `heating.circuits.${apiIndex}`;
+                    return {
+                        number: apiIndex + 1,
+                        supplyTemp: find(`${prefix}.sensors.temperature.supply`),
+                        returnTemp: find([
+                            `${prefix}.sensors.temperature.return`,
+                            `${prefix}.sensors.temperature.return.main`
+                        ]),
+                        pumpStatus: find([
+                            `${prefix}.circulation.pump.status`,
+                            `${prefix}.circulation.pump.active`,
+                            `${prefix}.circulation.pump.operating.modes.active`
+                        ]) || findNested(`${prefix}.circulation.pump`, 'status') ||
+                            findCircuitFeature(apiIndex, /circulation.*pump.*(?:status|state|active)|(?:status|state|active).*circulation.*pump/i),
+                        pumpSpeed: find([
+                            `${prefix}.circulation.pump.speed.current`,
+                            `${prefix}.circulation.pump.speed`
+                        ]) || findCircuitFeature(apiIndex, /circulation.*pump.*(?:speed|rotation)/i),
+                        mixerPosition: apiIndex === 2
+                            ? findCircuitFeature(apiIndex, /(?:mixer|mixing).*(?:position|opening|level)|(?:position|opening|level).*(?:mixer|mixing)/i)
+                            : null
+                    };
+                }),
                 boilerTemp: find(['heating.boiler.sensors.temperature.commonSupply', 'heating.boiler.temperature.current', 'heating.boiler.temperature']),
                 roomTemp: find(['heating.circuits.0.sensors.temperature.room']),
                 circuitTemp: find(['heating.circuits.0.temperature']),

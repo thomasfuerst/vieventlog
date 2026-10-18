@@ -10,12 +10,117 @@ function getWaterDensity(tempC) {
 
 // validate value
 function validate(featureVal) {
-	if (featureVal !== null && featureVal.value !== null){
+    if (featureVal && featureVal.value !== null && featureVal.value !== undefined){
 		if (typeof featureVal.value === 'number'){
 			return featureVal.value;
 		}
     }
     return null;
+}
+
+function isVitocal200G(deviceInfo, keyFeatures) {
+    const modelNames = [
+        deviceInfo?.modelId,
+        deviceInfo?.displayName,
+        keyFeatures?.deviceVariant?.value
+    ].filter(value => typeof value === 'string').join(' ');
+
+    return /vitocal[\s_-]*200[\s_-]*g/i.test(modelNames);
+}
+
+function numericFeatureValue(feature) {
+    let value = feature?.value;
+    while (value && typeof value === 'object' && value.value !== undefined) {
+        value = value.value;
+    }
+    return typeof value === 'number' ? value : null;
+}
+
+function formatHydraulicValue(feature, unit) {
+    const value = numericFeatureValue(feature);
+    return value === null ? '—' : `${value.toFixed(1)} ${unit}`;
+}
+
+function getHeatingPumpState(statusFeature, speedFeature) {
+    let status = statusFeature?.value;
+    while (status && typeof status === 'object' && status.value !== undefined) {
+        status = status.value;
+    }
+
+    if (typeof status === 'boolean') return status;
+    if (typeof status === 'number') return status > 0;
+    if (typeof status === 'string') {
+        const normalized = status.trim().toLowerCase();
+        if (['on', 'active', 'running', 'true', 'enabled'].includes(normalized)) return true;
+        if (['off', 'inactive', 'stopped', 'false', 'disabled'].includes(normalized)) return false;
+    }
+
+    const speed = numericFeatureValue(speedFeature);
+    return speed === null ? null : speed > 0;
+}
+
+function renderVitocellHydraulics(keyFeatures, compressorActive, activeFeed) {
+    const circuits = keyFeatures.heatingCircuits || [];
+    const badges = [
+        { feature: compressorActive ? keyFeatures.primarySupplyTemp : null, title: 'Sole-Eintritt zur Vitocal', left: 19, top: 38 },
+        { feature: compressorActive ? keyFeatures.primaryReturnTemp : null, title: 'Sole-Austritt zur Erdsonde', left: 19, top: 47 },
+        { feature: keyFeatures.dhwTemp, title: 'Temperatur Warmwasserzone', left: 50.4, top: 15 },
+        { feature: keyFeatures.bufferTempTop, title: 'Temperatur Puffer oben · Heizzone', left: 50.4, top: 70 },
+        { feature: circuits[0]?.returnTemp, title: 'Pufferheizkreis-Rücklauf', left: 39, top: 79 },
+        { feature: circuits[1]?.supplyTemp, title: 'Heizkörper-Vorlauf', left: 67, top: 26 },
+        { feature: circuits[1]?.returnTemp, title: 'Heizkörper-Rücklauf', left: 96, top: 46, alignRight: true },
+        { feature: circuits[2]?.supplyTemp, title: 'Fußbodenheizungs-Vorlauf', left: 67, top: 68 },
+        { feature: circuits[2]?.returnTemp, title: 'Fußbodenheizungs-Rücklauf', left: 96, top: 72, alignRight: true }
+    ];
+    const temperatureBadges = badges.map(({ feature, title, left, top, alignRight }) => {
+        const value = numericFeatureValue(feature);
+        if (value === null) return '';
+        const alignment = alignRight ? ' vitocell-temp-badge-right' : '';
+        return `<span class="vitocell-temp-badge${alignment}" title="${title}" style="left:${left}%;top:${top}%">${value.toFixed(1)} °C</span>`;
+    }).join('');
+    const hk1SupplyValue = numericFeatureValue(circuits[0]?.supplyTemp);
+    const hk1SupplyBadge = activeFeed && hk1SupplyValue !== null
+        ? `<span class="vitocell-temp-badge" title="Pufferheizkreis-Vorlauf · ${activeFeed === 'dhw' ? 'Warmwasserzone' : 'Heizzone'}" style="left:41.5%;top:${activeFeed === 'dhw' ? 16 : 63}%">${hk1SupplyValue.toFixed(1)} °C</span>`
+        : '';
+    const mixerPosition = numericFeatureValue(circuits[2]?.mixerPosition);
+    const mixerBadge = mixerPosition === null || !Number.isFinite(mixerPosition)
+        ? ''
+        : `<span class="vitocell-state-badge" title="Mischerstellung Fußbodenheizung" style="left:81.1%;top:78%">Mischer ${Math.round(mixerPosition)} %</span>`;
+    const pumpPositions = [
+        { left: 72, top: 30.8, title: 'Heizkörper' },
+        { left: 72, top: 73.2, title: 'Fußbodenheizung' }
+    ];
+    const pumpIndicators = circuits.slice(1, 3).map((circuit, index) => {
+        const state = getHeatingPumpState(circuit.pumpStatus, circuit.pumpSpeed);
+        const position = pumpPositions[index];
+        const style = `left:${position.left}%;top:${position.top}%`;
+        if (state !== true) return '';
+        return `<img class="vitocell-pump-motor" src="/static/img/vitocal/Fan_active.gif" alt="${position.title}: Pumpe aktiv" title="${position.title}: Heizkreispumpe aktiv" style="${style}">`;
+    }).join('');
+    const activeFeedLabel = activeFeed === 'dhw' ? 'Warmwasserladung' : activeFeed === 'heating' ? 'Heizbetrieb' : '';
+    const activeMotor = compressorActive && activeFeed
+        ? `<img class="vitocell-active-motor" src="/static/img/vitocal/Fan_active.gif" alt="Verdichter aktiv" title="Verdichter aktiv · ${activeFeedLabel}" style="left:44%;top:${activeFeed === 'dhw' ? 22 : 68}%">`
+        : '';
+
+    return `
+        <section class="vitocell-hydraulic-panel" aria-label="Vitocell 120-E und Heizkreise">
+            <div class="vitocell-panel-heading">
+                <h3>Vitocell 120-E · Schichtenspeicher und Heizkreise</h3>
+                <span class="vitocell-compressor-status ${compressorActive ? 'active' : 'inactive'}">Verdichter ${compressorActive ? 'aktiv' : 'aus'}</span>
+            </div>
+            <div class="vitocell-hydraulic-scroll">
+                <div class="vitocell-hydraulic-diagram">
+                    <img src="/static/img/vitocal/Vitocell120eHydraulik.svg"
+                        alt="Schematischer Solekreis und Vitocell 120-E mit Warmwasserzone, Heizzone, Heizkörper- und Fußbodenheizkreis">
+                    ${activeMotor}
+                    ${hk1SupplyBadge}
+                    ${mixerBadge}
+                    ${pumpIndicators}
+                    ${temperatureBadges}
+                </div>
+            </div>
+        </section>
+    `;
 }
 
 function renderRefrigerantCircuitVisual(keyFeatures) {
@@ -28,10 +133,9 @@ function renderRefrigerantCircuitVisual(keyFeatures) {
     if (deviceSetting && deviceSetting.hasHotWaterBuffer !== null && deviceSetting.hasHotWaterBuffer !== undefined) {
         hasHotWaterBuffer = deviceSetting.hasHotWaterBuffer;
     }
-	let useOtherPic = false; // default
-	if (deviceSetting && deviceSetting.useOtherRefrigerantPic !== null && deviceSetting.useOtherRefrigerantPic !== undefined) {
-        useOtherPic = deviceSetting.useOtherRefrigerantPic;
-    }
+	const useOtherPic = typeof deviceSetting?.useOtherRefrigerantPic === 'boolean'
+        ? deviceSetting.useOtherRefrigerantPic
+        : isVitocal200G(deviceInfo, keyFeatures);
 
     // Check if we have compressor data (heat pump only)
     const hasCompressor = keyFeatures.compressorActive !== null ||
@@ -41,16 +145,24 @@ function renderRefrigerantCircuitVisual(keyFeatures) {
     if (!hasCompressor) {
         return ''; // Not a heat pump, don't show visualization
     }
+
+    const compressorActive = keyFeatures.compressorActive?.value === true ||
+        (typeof keyFeatures.compressorSpeed?.value === 'number' && keyFeatures.compressorSpeed.value > 0);
+    const dhwActive = ['on', 'active', 'dhw'].includes(keyFeatures.dhwStatus?.value) ||
+        keyFeatures.operatingMode?.value === 'dhw';
+    const heatingCircuitActive = ['heating', 'dhwAndHeating'].includes(keyFeatures.operatingMode?.value) ||
+        (keyFeatures.heatingCircuits || []).some(circuit => {
+            const supply = numericFeatureValue(circuit.supplyTemp);
+            const returnValue = numericFeatureValue(circuit.returnTemp);
+            return supply !== null && (returnValue === null || supply > returnValue);
+        });
+    const activeFeed = !compressorActive ? null : dhwActive ? 'dhw' : heatingCircuitActive ? 'heating' : null;
 	
-	// if primary return temp available and alternative picture selected, use the other refrigerant picture
-	if (useOtherPic && keyFeatures.primaryReturnTemp && (typeof keyFeatures.primaryReturnTemp?.value === 'number')){
-		return renderOtherRefrigerantCircuitPic(keyFeatures)
+    // Use the brine/water diagram automatically for Vitocal 200-G unless a device override exists.
+    if (useOtherPic){
+		return renderOtherRefrigerantCircuitPic(keyFeatures, compressorActive, activeFeed)
 	}	
 	
-    // Determine if compressor is active
-    const compressorActive = keyFeatures.compressorActive?.value === true ||
-                            (keyFeatures.compressorSpeed?.value && keyFeatures.compressorSpeed.value > 0);
-
     // Select base image (active or inactive)
     let baseImage = compressorActive ?
         '/static/img/vitocal/Kaeltekreislauf%20ein.jpg' : '/static/img/vitocal/Kaeltekreislauf%20aus.jpg';
@@ -283,7 +395,11 @@ function renderRefrigerantCircuitVisual(keyFeatures) {
 
 
 // use other picture for visual representation of the heat pump refrigerant cycle with real-time data overlay 
-function renderOtherRefrigerantCircuitPic(keyFeatures) {
+function renderOtherRefrigerantCircuitPic(keyFeatures, compressorActive = false, activeFeed = null) {
+    const deviceInfo = window.currentDeviceInfo;
+    const deviceKey = deviceInfo ? `${deviceInfo.installationId}_${deviceInfo.deviceId}` : null;
+    const deviceSetting = deviceKey && window.deviceSettingsCache ? window.deviceSettingsCache[deviceKey] : null;
+    const isVitocellView = deviceSetting?.useOtherRefrigerantPic === true || isVitocal200G(deviceInfo, keyFeatures);
 	
     // Select base image (active or inactive)
     let baseImage = '/static/img/vitocal/WMPrefrigerant.jpg';
@@ -365,9 +481,9 @@ function renderOtherRefrigerantCircuitPic(keyFeatures) {
         //  Auslasstemperatur (Heißgastemperatur Verdichter)
         compressorOutletTemp: validate(keyFeatures.compressorOutletTemp),
         //  Eintrittstemperatur Primärkreis (Sole-Eintritt)
-        primarySupply: validate(keyFeatures.primarySupplyTemp),
+        primarySupply: compressorActive ? validate(keyFeatures.primarySupplyTemp) : null,
         //  Austrittstemperatur Primärkreis (Sole-Austritt)
-        primaryReturn: validate(keyFeatures.primaryReturnTemp),
+        primaryReturn: compressorActive ? validate(keyFeatures.primaryReturnTemp) : null,
         //  Außentemperatur
         outsideTemp: validate(keyFeatures.outsideTemp),
         //  Warmwasser
@@ -383,24 +499,9 @@ function renderOtherRefrigerantCircuitPic(keyFeatures) {
         // Sole-spezifisch: Flüssiggastemperatur
         liquidGasTemp: validate(keyFeatures.liquidGasTemp),
         // Sole-spezifisch: Primärkreis Pumpendrehzahl
-        primaryRotation: validate(keyFeatures.primaryRotation),
+        primaryRotation: compressorActive ? validate(keyFeatures.primaryRotation) : null,
     };
 
-
-	// validate bufferTemp, option: bufferTempTop
-    let bufferTempVal = null;
-    if (keyFeatures.bufferTemp !== null){
-    	const bufferTempValue = keyFeatures.bufferTemp.value;
-        if ( typeof bufferTempValue === 'number'){
-            bufferTempVal = bufferTempValue;
-        }
-    }
-    if (bufferTempVal == null && keyFeatures.bufferTempTop !== null){
-    	const bufferTempTopValue = keyFeatures.bufferTempTop.value;
-        if ( typeof bufferTempTopValue === 'number'){
-            bufferTempVal = bufferTempTopValue;
-        }
-    }
 
     // Format value with unit
     const formatValue = (value, unit = '', decimals = 1) => {
@@ -414,11 +515,11 @@ function renderOtherRefrigerantCircuitPic(keyFeatures) {
     return `
             <div class="refrigerant-visual-container">
                 <div class="refrigerant-diagram">
-                    <img src="${baseImage}" alt="Kältekreislauf" class="base-diagram">
+                    <img src="${baseImage}" alt="${isVitocellView ? 'Sole/Wasser-Kältekreislauf' : 'Kältekreislauf'}" class="base-diagram">
 
                     <!-- Component overlays with status images -->
                     <!-- DHW Storage -->
-                    ${dhw_exists ? `
+                    ${dhw_exists && !isVitocellView ? `
                     <img src="${dhw_image}"
                          alt="Warmwasserspeicher" class="component-overlay dhw-storage-overlay-left">
                     ` : ''}
@@ -448,9 +549,10 @@ function renderOtherRefrigerantCircuitPic(keyFeatures) {
                     ${values.primaryRotation !== null ? `<div class="value-label" style="top: 38.67%; left: 93.48%;" title="Primärkreis Pumpendrehzahl">${formatValue(values.primaryRotation, '%', 0)}</div>` : ''}
 
                     <!-- Speichertemperaturen (unter den Speicher-Bildern) -->
-                    ${values.dhwTemp !== null ? `<div class="value-label" style="top: 65.00%; left: 4.50%;" title="Warmwasser Temperatur">${formatValue(values.dhwTemp, '°C')}</div>` : ''}
+                    ${values.dhwTemp !== null && !isVitocellView ? `<div class="value-label" style="top: 65.00%; left: 4.50%;" title="Warmwasser Temperatur">${formatValue(values.dhwTemp, '°C')}</div>` : ''}
 
                 </div>
+                ${isVitocellView ? renderVitocellHydraulics(keyFeatures, compressorActive, activeFeed) : ''}
             </div>
     `;
 }

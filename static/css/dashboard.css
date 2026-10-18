@@ -1555,6 +1555,156 @@
     margin-bottom: 15px;
 }
 
+.vitocell-hydraulic-panel {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 8px;
+    background: #0b1220;
+    color: #f8fafc;
+}
+
+.vitocell-hydraulic-panel h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+}
+
+.vitocell-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.vitocell-panel-heading h3 {
+    margin: 0;
+}
+
+.vitocell-compressor-status {
+    flex-shrink: 0;
+    padding: 3px 7px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.vitocell-compressor-status.active {
+    color: #bbf7d0;
+    background: rgba(22, 101, 52, 0.45);
+}
+
+.vitocell-compressor-status.inactive {
+    color: #cbd5e1;
+    background: rgba(51, 65, 85, 0.65);
+}
+
+.vitocell-hydraulic-scroll {
+    overflow-x: auto;
+}
+
+.vitocell-hydraulic-diagram {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    aspect-ratio: 1360 / 500;
+}
+
+.vitocell-hydraulic-diagram img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.vitocell-temp-badge {
+    position: absolute;
+    z-index: 2;
+    transform: translate(-50%, -50%);
+    padding: 1px 3px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 4px;
+    background: rgba(2, 6, 23, 0.9);
+    color: #f8fafc;
+    font-size: 9px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+    white-space: nowrap;
+    cursor: help;
+}
+
+.vitocell-temp-badge-right {
+    transform: translate(-100%, -50%);
+}
+
+.vitocell-state-badge {
+    position: absolute;
+    z-index: 2;
+    transform: translate(-50%, -50%);
+    padding: 1px 3px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 4px;
+    background: rgba(2, 6, 23, 0.9);
+    color: #f8fafc;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.25;
+    white-space: nowrap;
+    cursor: help;
+}
+
+.vitocell-hydraulic-diagram img.vitocell-active-motor {
+    position: absolute;
+    z-index: 3;
+    width: 18px;
+    height: 18px;
+    min-width: 0;
+    object-fit: contain;
+    transform: translate(-50%, -50%);
+    image-rendering: auto;
+}
+
+.vitocell-hydraulic-diagram img.vitocell-pump-motor {
+    position: absolute;
+    z-index: 3;
+    width: 14px;
+    height: 14px;
+    min-width: 0;
+    object-fit: contain;
+    transform: translate(-50%, -50%);
+}
+
+.vitocell-pump-status {
+    position: absolute;
+    z-index: 3;
+    transform: translate(-50%, -50%);
+    padding: 1px 3px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    background: rgba(2, 6, 23, 0.92);
+    font-size: 8px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.vitocell-pump-status.off {
+    color: #cbd5e1;
+}
+
+.vitocell-pump-status.unknown {
+    color: #fde68a;
+}
+
+@media (max-width: 640px) {
+    .vitocell-hydraulic-diagram {
+        min-width: 760px;
+    }
+}
+
 .refrigerant-diagram {
     position: relative;
     width: 100%;
@@ -1623,7 +1773,7 @@
 /* Compact value labels directly on diagram */
 .value-label {
     position: absolute;
-    font-size: 11px;
+    font-size: 9px;
     color: #ffffff;
     font-weight: 600;
     text-shadow:
