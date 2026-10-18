@@ -278,6 +278,10 @@
 
             contentDiv.innerHTML = html;
 
+            if (deviceInfo && typeof loadCompressorStartsMiniChart === 'function') {
+                loadCompressorStartsMiniChart(deviceInfo);
+            }
+
             // Render D3 charts after DOM is updated (only for heating devices)
             if (deviceType !== 'zigbee' && window.heatingCurveData) {
                 // Use longer timeout to allow DOM to fully layout (especially important with multiple circuits)

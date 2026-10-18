@@ -41,6 +41,275 @@ function formatHydraulicValue(feature, unit) {
     return value === null ? '—' : `${value.toFixed(1)} ${unit}`;
 }
 
+function snapshotCompressorState(snapshot) {
+    const state = snapshot?.compressor_active;
+    if (typeof state === 'boolean') return state;
+    if (typeof state === 'number') return state > 0;
+    if (typeof state === 'string') {
+        const normalized = state.trim().toLowerCase();
+        if (['on', 'active', 'running', 'true', 'enabled'].includes(normalized)) return true;
+        if (['off', 'inactive', 'stopped', 'false', 'disabled'].includes(normalized)) return false;
+    }
+    return typeof snapshot?.compressor_speed === 'number' ? snapshot.compressor_speed > 0 : null;
+}
+
+function compressorLoadType(snapshot) {
+    if (snapshot?.dhw_pump_active === true) return 'Warmwasserladung';
+    if (snapshot?.dhw_pump_active === false) return 'Heizungsladung';
+    return 'Betriebsart nicht erfasst';
+}
+
+function formatCompressorDuration(durationMs, running = false) {
+    if (!Number.isFinite(durationMs) || durationMs < 0) return 'Dauer nicht erfasst';
+    const minutes = Math.round(durationMs / 60000);
+    const duration = minutes < 60
+        ? `${minutes} min`
+        : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')} min`;
+    return running ? `läuft seit ${duration}` : duration;
+}
+
+function buildDailyCompressorStarts(snapshots, now = new Date(), sampleIntervalMinutes = 1) {
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const days = Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(today);
+        date.setDate(today.getDate() - (6 - index));
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        return {
+            date,
+            key,
+            count: 0,
+            hasData: false,
+            events: [],
+            counterHints: [],
+            energy: {
+                dhw: { electricityKwh: 0, thermalKwh: 0, hasElectricity: false, hasThermal: false },
+                heating: { electricityKwh: 0, thermalKwh: 0, hasElectricity: false, hasThermal: false },
+                unknown: { electricityKwh: 0, thermalKwh: 0, hasElectricity: false, hasThermal: false }
+            }
+        };
+    });
+    const dayByKey = new Map(days.map(day => [day.key, day]));
+    const ordered = (Array.isArray(snapshots) ? snapshots : [])
+        .filter(snapshot => snapshot?.timestamp && Number.isFinite(new Date(snapshot.timestamp).getTime()))
+        .sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
+
+    const dayForTimestamp = timestamp => {
+        const date = new Date(timestamp);
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        return dayByKey.get(key) || null;
+    };
+    let previousCounter = null;
+    let previousSnapshot = null;
+    let previousActive = null;
+    let activeEvent = null;
+
+    for (const snapshot of ordered) {
+        const timestamp = new Date(snapshot.timestamp);
+        const day = dayForTimestamp(timestamp);
+
+        if (typeof snapshot.compressor_starts === 'number' && Number.isFinite(snapshot.compressor_starts)) {
+            const starts = snapshot.compressor_starts;
+            if (previousCounter) {
+                const delta = starts >= previousCounter.starts ? starts - previousCounter.starts : starts;
+                if (delta > 0 && day) {
+                    day.count += Math.round(delta);
+                    day.hasData = true;
+                    for (let index = 0; index < Math.round(delta); index++) {
+                        day.counterHints.push({ timestamp, loadType: compressorLoadType(snapshot) });
+                    }
+                }
+            }
+            previousCounter = { starts, timestamp };
+        }
+
+        const active = snapshotCompressorState(snapshot);
+        if (active !== null && day) {
+            if (active && previousActive === false) {
+                activeEvent = {
+                    timestamp,
+                    durationMs: null,
+                    loadType: compressorLoadType(snapshot),
+                    running: false
+                };
+                day.events.push(activeEvent);
+                day.hasData = true;
+            } else if (!active && previousActive === true && activeEvent) {
+                activeEvent.durationMs = timestamp - activeEvent.timestamp;
+                activeEvent = null;
+            }
+        }
+
+        if (previousSnapshot) {
+            const previousTime = new Date(previousSnapshot.timestamp);
+            const elapsedMs = timestamp - previousTime;
+            const maxGapMs = Math.max(1, Number(sampleIntervalMinutes) || 1) * 2 * 60000;
+            const previouslyActive = snapshotCompressorState(previousSnapshot);
+            if (elapsedMs > 0 && elapsedMs <= maxGapMs && (active === true || previouslyActive === true) && day) {
+                const activeSnapshot = active === true ? snapshot : previousSnapshot;
+                const loadType = compressorLoadType(activeSnapshot);
+                const energy = loadType === 'Warmwasserladung' ? day.energy.dhw
+                    : loadType === 'Heizungsladung' ? day.energy.heating
+                    : day.energy.unknown;
+                const hours = elapsedMs / 3600000;
+                const electricalSamples = [previousSnapshot.compressor_power, snapshot.compressor_power]
+                    .filter(value => typeof value === 'number' && Number.isFinite(value));
+                if (electricalSamples.length) {
+                    const averageWatts = electricalSamples.reduce((sum, value) => sum + value, 0) / electricalSamples.length;
+                    energy.electricityKwh += averageWatts * hours / 1000;
+                    energy.hasElectricity = true;
+                    day.hasData = true;
+                }
+                const thermalSamples = [previousSnapshot.thermal_power, snapshot.thermal_power]
+                    .filter(value => typeof value === 'number' && Number.isFinite(value));
+                if (thermalSamples.length) {
+                    const averageKilowatts = thermalSamples.reduce((sum, value) => sum + value, 0) / thermalSamples.length;
+                    energy.thermalKwh += averageKilowatts * hours;
+                    energy.hasThermal = true;
+                    day.hasData = true;
+                }
+            }
+        }
+
+        if (active !== null) previousActive = active;
+        previousSnapshot = snapshot;
+    }
+
+    if (activeEvent && ordered.length) {
+        activeEvent.durationMs = new Date(ordered[ordered.length - 1].timestamp) - activeEvent.timestamp;
+        activeEvent.running = true;
+    }
+
+    for (const day of days) {
+        const statusEvents = [...day.events];
+        const unmatchedHints = [...day.counterHints];
+        for (const event of statusEvents) {
+            let matchIndex = -1;
+            let bestDistance = Infinity;
+            unmatchedHints.forEach((hint, index) => {
+                const distance = Math.abs(hint.timestamp - event.timestamp);
+                if (distance < bestDistance && distance <= Math.max(1, Number(sampleIntervalMinutes) || 1) * 3 * 60000) {
+                    bestDistance = distance;
+                    matchIndex = index;
+                }
+            });
+            if (matchIndex >= 0) unmatchedHints.splice(matchIndex, 1);
+        }
+        for (const hint of unmatchedHints) {
+            day.events.push({
+                timestamp: hint.timestamp,
+                durationMs: null,
+                loadType: hint.loadType,
+                running: false,
+                detailMissing: true
+            });
+        }
+        day.count = Math.max(day.count, day.events.length);
+        const measuredDurations = day.events
+            .filter(event => !event.detailMissing && Number.isFinite(event.durationMs))
+            .map(event => event.durationMs);
+        day.averageRuntimeMs = measuredDurations.length
+            ? measuredDurations.reduce((sum, duration) => sum + duration, 0) / measuredDurations.length
+            : null;
+    }
+
+    return days.map(day => ({
+        ...day,
+        weekday: day.date.toLocaleDateString('de-DE', { weekday: 'short' }),
+        dateLabel: day.date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
+    }));
+}
+
+const compressorStartsMiniCache = new Map();
+
+async function loadCompressorStartsMiniChart(deviceInfo) {
+    const container = document.getElementById('compressor-starts-mini-chart');
+    if (!container || !deviceInfo?.installationId) return;
+
+    const cacheKey = `${deviceInfo.installationId}_${deviceInfo.gatewaySerial || ''}_${deviceInfo.deviceId || ''}`;
+    const cached = compressorStartsMiniCache.get(cacheKey);
+    if (cached && Date.now() - cached.loadedAt < 5 * 60 * 1000) {
+        renderCompressorStartsMiniChart(container, cached.days);
+        return;
+    }
+
+    try {
+        const params = new URLSearchParams({
+            installationId: deviceInfo.installationId,
+            hours: '192',
+            limit: '15000'
+        });
+        if (deviceInfo.gatewaySerial) params.set('gatewayId', deviceInfo.gatewaySerial);
+        if (deviceInfo.deviceId) params.set('deviceId', deviceInfo.deviceId);
+
+        const [response, settingsResponse] = await Promise.all([
+            fetch(`/api/temperature-log/data?${params.toString()}`),
+            fetch('/api/temperature-log/settings')
+        ]);
+        if (!response.ok) throw new Error(`API ${response.status}`);
+        const result = await response.json();
+        const settings = settingsResponse.ok ? await settingsResponse.json() : {};
+        const sampleInterval = Number(settings.sample_interval) > 0 ? Number(settings.sample_interval) : 1;
+        const days = buildDailyCompressorStarts(result.data, new Date(), sampleInterval);
+        compressorStartsMiniCache.set(cacheKey, { days, loadedAt: Date.now() });
+        renderCompressorStartsMiniChart(container, days);
+    } catch (error) {
+        console.warn('Compressor start history unavailable:', error);
+        container.innerHTML = '<div class="compressor-starts-empty">Startverlauf nicht verfügbar</div>';
+    }
+}
+
+function renderCompressorStartsMiniChart(container, days) {
+    if (!days.some(day => day.hasData)) {
+        container.innerHTML = '<div class="compressor-starts-empty">Noch keine Startverläufe gespeichert</div>';
+        return;
+    }
+
+    const maxCount = Math.max(1, ...days.filter(day => day.hasData).map(day => day.count));
+    const energyText = energy => {
+        const electricity = energy.hasElectricity ? energy.electricityKwh.toFixed(2) : '—';
+        const thermal = energy.hasThermal ? energy.thermalKwh.toFixed(2) : '—';
+        return `${electricity}/${thermal}`;
+    };
+    const bars = days.map(day => {
+        const width = day.hasData && day.count > 0 ? Math.max(2, day.count / maxCount * 100) : 0;
+        const value = day.hasData ? day.count : '—';
+        const startLines = day.events.length
+            ? day.events.map(event => {
+                const time = new Date(event.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                const duration = event.detailMissing
+                    ? 'Dauer nicht in Status-Snapshots erfasst'
+                    : formatCompressorDuration(event.durationMs, event.running);
+                return `${time} · ${duration} · ${event.loadType}`;
+            })
+            : ['Einzelstartdetails nicht in Status-Snapshots erfasst'];
+        const title = [
+            `${day.weekday} ${day.dateLabel} · ${day.hasData ? `${day.count} Verdichterstarts` : 'keine Daten'}`,
+            'Starts:',
+            ...startLines,
+            'Energie (Strom/Wärme in kWh):',
+            `Warmwasser: ${energyText(day.energy.dhw)}`,
+            `Heizung: ${energyText(day.energy.heating)}`,
+            ...(day.energy.unknown.hasElectricity || day.energy.unknown.hasThermal
+                ? [`Nicht zugeordnet: ${energyText(day.energy.unknown)}`]
+                : [])
+        ].join('\n');
+        const averageRuntime = day.averageRuntimeMs === null
+            ? '—'
+            : formatCompressorDuration(day.averageRuntimeMs);
+        const energySummary = `WW ${energyText(day.energy.dhw)} · H ${energyText(day.energy.heating)}`;
+        return `<div class="compressor-start-day" title="${title}">
+            <span class="compressor-start-date">${day.weekday}</span>
+            <div class="compressor-start-track"><div class="compressor-start-bar" style="width:${width}%"></div></div>
+            <span class="compressor-start-count">${value}</span>
+            <span class="compressor-start-energy" title="Stromverbrauch / Wärmeerzeugung, jeweils kWh">${energySummary}</span>
+            <span class="compressor-start-runtime" title="Mittlere Verdichterlaufzeit je Start">Ø ${averageRuntime}</span>
+        </div>`;
+    }).join('');
+
+    return container.innerHTML = `<div class="compressor-starts-bars">${bars}</div>`;
+}
+
 function getHeatingPumpState(statusFeature, speedFeature) {
     let status = statusFeature?.value;
     while (status && typeof status === 'object' && status.value !== undefined) {
@@ -105,8 +374,9 @@ function renderVitocellHydraulics(keyFeatures, compressorActive, activeFeed) {
     return `
         <section class="vitocell-hydraulic-panel" aria-label="Vitocell 120-E und Heizkreise">
             <div class="vitocell-panel-heading">
-                <h3>Vitocell 120-E · Schichtenspeicher und Heizkreise</h3>
-                <span class="vitocell-compressor-status ${compressorActive ? 'active' : 'inactive'}">Verdichter ${compressorActive ? 'aktiv' : 'aus'}</span>
+                <section id="compressor-starts-mini-chart" class="compressor-starts-mini-chart" aria-label="Verdichterstarts der letzten sieben Tage">
+                    <div class="compressor-starts-empty">Verdichterstarts werden geladen…</div>
+                </section>
             </div>
             <div class="vitocell-hydraulic-scroll">
                 <div class="vitocell-hydraulic-diagram">
