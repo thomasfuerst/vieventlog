@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -16,7 +17,15 @@ var (
 	// Features cache
 	featuresCache      = make(map[string]*DeviceFeatures) // key: installationID:gatewayID:deviceID
 	featuresCacheMutex sync.RWMutex
+
+	optionalFeaturesCache      = make(map[string]optionalFeatureCacheEntry)
+	optionalFeaturesCacheMutex sync.Mutex
 )
+
+type optionalFeatureCacheEntry struct {
+	feature  *Feature
+	loadedAt time.Time
+}
 
 // fetchEvents fetches events from all active accounts with cursor-based pagination
 func fetchEvents(daysBack int) ([]Event, error) {
@@ -266,9 +275,132 @@ func fetchFeaturesForDevice(installationID, gatewayID, deviceID, accessToken str
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// Parse and categorize features
-	deviceFeatures := parseFeatures(featuresResp.Data, installationID, gatewayID, deviceID)
+	// Some ViCare energy properties are omitted from the collection endpoint but
+	// are available through the individual feature endpoint.
+	rawFeatures := append([]Feature(nil), featuresResp.Data...)
+	if hasCompressorFeatures(rawFeatures) {
+		optionalFeatures := []struct {
+			name string
+			ttl  time.Duration
+		}{
+			{name: "heating.compressors.0.power.consumption.current", ttl: 5 * time.Minute},
+			{name: "heating.compressors.0.heat.production.current", ttl: 5 * time.Minute},
+			{name: "heating.power.consumption.total", ttl: 15 * time.Minute},
+			{name: "heating.power.consumption.dhw", ttl: 15 * time.Minute},
+			{name: "heating.power.consumption.heating", ttl: 15 * time.Minute},
+		}
+		for _, optionalFeature := range optionalFeatures {
+			if hasFeature(rawFeatures, optionalFeature.name) || !checkAPIRateLimit() {
+				continue
+			}
+			feature, err := fetchOptionalFeatureForDevice(installationID, gatewayID, deviceID, accessToken, optionalFeature.name, optionalFeature.ttl)
+			if err != nil {
+				log.Printf("Optional ViCare energy feature %s unavailable: %v", optionalFeature.name, err)
+				continue
+			}
+			if feature != nil {
+				rawFeatures = append(rawFeatures, *feature)
+			}
+		}
+	}
+
+	// Parse and categorize collection and individually fetched features together.
+	deviceFeatures := parseFeatures(rawFeatures, installationID, gatewayID, deviceID)
 	return deviceFeatures, nil
+}
+
+func hasCompressorFeatures(features []Feature) bool {
+	for _, feature := range features {
+		if feature.Feature == "heating.compressors" || strings.HasPrefix(feature.Feature, "heating.compressors.") {
+			return true
+		}
+	}
+	return false
+}
+
+func hasFeature(features []Feature, featureName string) bool {
+	for _, feature := range features {
+		if feature.Feature == featureName {
+			return true
+		}
+	}
+	return false
+}
+
+func fetchOptionalFeatureForDevice(installationID, gatewayID, deviceID, accessToken, featureName string, cacheTTL time.Duration) (*Feature, error) {
+	cacheKey := fmt.Sprintf("%s:%s:%s:%s", installationID, gatewayID, deviceID, featureName)
+	optionalFeaturesCacheMutex.Lock()
+	if cached, exists := optionalFeaturesCache[cacheKey]; exists && time.Since(cached.loadedAt) < cacheTTL {
+		optionalFeaturesCacheMutex.Unlock()
+		return cached.feature, nil
+	}
+	optionalFeaturesCacheMutex.Unlock()
+
+	feature, err := fetchSingleFeatureForDevice(installationID, gatewayID, deviceID, accessToken, featureName)
+	if err != nil {
+		return nil, err
+	}
+	optionalFeaturesCacheMutex.Lock()
+	optionalFeaturesCache[cacheKey] = optionalFeatureCacheEntry{feature: feature, loadedAt: time.Now()}
+	optionalFeaturesCacheMutex.Unlock()
+	return feature, nil
+}
+
+func fetchSingleFeatureForDevice(installationID, gatewayID, deviceID, accessToken, featureName string) (*Feature, error) {
+	endpoint := fmt.Sprintf("https://api.viessmann-climatesolutions.com/iot/v2/features/installations/%s/gateways/%s/devices/%s/features/%s",
+		installationID, gatewayID, deviceID, url.PathEscape(featureName))
+	request, err := NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	request.Header.Set("Authorization", "Bearer "+accessToken)
+	request.Header.Set("Accept", "application/json")
+
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("feature request failed: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode == http.StatusNotFound {
+		log.Printf("ViCare optional feature %s: HTTP 404", featureName)
+		return nil, nil
+	}
+	if response.StatusCode != http.StatusOK {
+		log.Printf("ViCare optional feature %s: HTTP %d", featureName, response.StatusCode)
+		return nil, fmt.Errorf("API returned status %d", response.StatusCode)
+	}
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read feature response: %w", err)
+	}
+	var envelope struct {
+		Data json.RawMessage `json:"data"`
+	}
+	var payload json.RawMessage = body
+	if json.Unmarshal(body, &envelope) == nil && len(envelope.Data) > 0 {
+		payload = envelope.Data
+	}
+	var features []Feature
+	if json.Unmarshal(payload, &features) == nil && len(features) > 0 {
+		if features[0].Feature == "" {
+			features[0].Feature = featureName
+		}
+		return &features[0], nil
+	}
+	var feature Feature
+	if err := json.Unmarshal(payload, &feature); err != nil {
+		return nil, fmt.Errorf("failed to decode feature response: %w", err)
+	}
+	if feature.Feature == "" {
+		feature.Feature = featureName
+	}
+	if feature.Properties == nil {
+		log.Printf("ViCare optional feature %s: HTTP 200 without properties", featureName)
+		return nil, nil
+	}
+	log.Printf("ViCare optional feature %s: available", featureName)
+	return &feature, nil
 }
 
 // parseFeatures categorizes features into logical groups

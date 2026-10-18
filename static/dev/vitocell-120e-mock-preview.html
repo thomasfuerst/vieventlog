@@ -1,3 +1,8 @@
+                                    <span class="vitocell-mobile-temp" title="Temperatur Warmwasserzone"><span>Speicher</span><strong>48,3 °C</strong><small class="vitocell-mobile-temp-target">Soll 50,0 °C</small></span>
+                                    <span class="vitocell-mobile-temp" title="Temperatur Puffer oben"><span>Puffer oben</span><strong>25,4 °C</strong><small class="vitocell-mobile-temp-target">Soll 25,2 °C</small></span>
+                                    <span class="vitocell-mobile-flow-temp" title="Puffer-Vorlauf"><span class="vitocell-mobile-flow-current">VL 48,0 °C</span><span class="vitocell-mobile-flow-target">Soll 25,2 °C</span></span><i class="hot"></i><i class="cool"></i><span class="vitocell-mobile-flow-temp" title="Puffer-Rücklauf">RL 41,0 °C</span>
+                                    <span class="vitocell-mobile-flow-temp" title="Heizkörper-Vorlauf"><span class="vitocell-mobile-flow-current">VL 42,0 °C</span><span class="vitocell-mobile-flow-target">Soll 25,2 °C</span></span><i class="hot"></i><i class="cool"></i><span class="vitocell-mobile-flow-temp" title="Heizkörper-Rücklauf">RL 34,0 °C</span>
+                                    <span class="vitocell-mobile-flow-temp" title="Fußbodenheizungs-Vorlauf"><span class="vitocell-mobile-flow-current">VL 35,0 °C</span><span class="vitocell-mobile-flow-target">Soll 25,2 °C</span></span><i class="hot"></i><i class="cool"></i><span class="vitocell-mobile-flow-temp" title="Fußbodenheizungs-Rücklauf">RL 29,0 °C</span>
 <!doctype html>
 <html lang="de">
 <head>
@@ -109,61 +114,59 @@
                         <span class="vitocell-temp-badge vitocell-temp-badge-right" style="left:96%;top:46%" title="Heizkörper-Rücklauf">34,0 °C</span>
                         <span class="vitocell-temp-badge" style="left:67%;top:68%" title="Fußbodenheizungs-Vorlauf">35,0 °C</span>
                         <span class="vitocell-temp-badge vitocell-temp-badge-right" style="left:96%;top:72%" title="Fußbodenheizungs-Rücklauf">29,0 °C</span>
-                        <span class="vitocell-state-badge" style="left:81.1%;top:78%" title="Mischerstellung Fußbodenheizung">Mischer 63 %</span>
                         <img class="vitocell-pump-motor" src="../img/vitocal/Fan_active.gif" alt="Fußbodenheizungspumpe aktiv" title="Fußbodenheizungspumpe aktiv" style="left:72%;top:73.2%">
                     </div>
                     <div class="vitocell-mobile-diagram">
                         <div class="vitocell-mobile-sole-loop">
                             <div class="vitocell-mobile-node">
                                 <strong>Erdsonde</strong>
-                                <span class="vitocell-mobile-temp" title="Sole-Eintritt zur Vitocal"><span>Sole-Eintritt</span><strong>13,9 °C</strong></span>
-                                <span class="vitocell-mobile-temp" title="Sole-Austritt zur Erdsonde"><span>Sole-Austritt</span><strong>10,5 °C</strong></span>
                             </div>
-                            <div class="vitocell-mobile-flow" aria-hidden="true"><i class="hot"></i><i class="cool"></i></div>
+                            <div class="vitocell-mobile-flow">
+                                <span class="vitocell-mobile-flow-temp" title="Sole-Eintritt zur Vitocal">Ein 13,9 °C</span>
+                                <i class="hot"></i>
+                                <span class="vitocell-mobile-flow-temp" title="Sole-Austritt zur Erdsonde">Aus 10,5 °C</span>
+                                <i class="cool"></i>
+                            </div>
                             <div class="vitocell-mobile-node vitocell-mobile-heat-pump">
                                 <strong>Vitocal 200-G</strong>
                                 <span class="vitocell-mobile-pump active"><img src="../img/vitocal/Fan_active.gif" alt="">Verdichter aktiv</span>
                             </div>
                         </div>
                         <div class="vitocell-mobile-flow-pair" aria-hidden="true"><i class="hot"></i><i class="cool"></i></div>
-                        <div class="vitocell-mobile-connection">HK1 · Vorlauf zum Puffer / Rücklauf zur Vitocal</div>
+                        <div class="vitocell-mobile-flow-row" aria-label="Puffer-Vorlauf und Rücklauf">
+                            <span class="vitocell-mobile-flow-temp" title="Puffer-Vorlauf">VL 48,0 °C</span><i class="hot"></i><i class="cool"></i><span class="vitocell-mobile-flow-temp" title="Puffer-Rücklauf">RL 41,0 °C</span>
+                        </div>
                         <div class="vitocell-mobile-tank">
                             <section class="vitocell-mobile-zone warm">
                                 <strong>Warmwasserzone</strong>
                                 <div class="vitocell-mobile-values">
                                     <span class="vitocell-mobile-temp" title="Temperatur Warmwasserzone"><span>Speicher</span><strong>48,3 °C</strong></span>
-                                    <span class="vitocell-mobile-temp" title="Pufferheizkreis-Vorlauf"><span>HK1 Vorlauf</span><strong>48,0 °C</strong></span>
                                 </div>
                             </section>
                             <section class="vitocell-mobile-zone heating">
                                 <strong>Heizzone</strong>
                                 <div class="vitocell-mobile-values">
                                     <span class="vitocell-mobile-temp" title="Temperatur Puffer oben"><span>Puffer oben</span><strong>51,4 °C</strong></span>
-                                    <span class="vitocell-mobile-temp" title="Pufferheizkreis-Rücklauf"><span>HK1 Rücklauf</span><strong>41,0 °C</strong></span>
                                 </div>
                             </section>
                         </div>
-                        <div class="vitocell-mobile-connection">HK2 / HK3 · Vorlauf und gemeinsamer Rücklauf</div>
-                        <div class="vitocell-mobile-circuit-flows" aria-hidden="true">
-                            <div class="vitocell-mobile-flow-pair"><i class="hot"></i><i class="cool"></i></div>
-                            <div class="vitocell-mobile-flow-pair"><i class="hot"></i><i class="cool"></i></div>
-                        </div>
-                        <div class="vitocell-mobile-circuits">
-                            <section class="vitocell-mobile-circuit">
-                                <div class="vitocell-mobile-circuit-heading"><strong>HK2 · Heizkörper</strong><span class="vitocell-mobile-pump">Pumpenstatus —</span></div>
-                                <div class="vitocell-mobile-values">
-                                    <span class="vitocell-mobile-temp" title="Heizkörper-Vorlauf"><span>Vorlauf</span><strong>42,0 °C</strong></span>
-                                    <span class="vitocell-mobile-temp" title="Heizkörper-Rücklauf"><span>Rücklauf</span><strong>34,0 °C</strong></span>
+                        <div class="vitocell-mobile-circuit-columns">
+                            <div class="vitocell-mobile-circuit-column">
+                                <div class="vitocell-mobile-flow-row" aria-label="Heizkörper-Vorlauf und Rücklauf">
+                                    <span class="vitocell-mobile-flow-temp" title="Heizkörper-Vorlauf">VL 42,0 °C</span><i class="hot"></i><i class="cool"></i><span class="vitocell-mobile-flow-temp" title="Heizkörper-Rücklauf">RL 34,0 °C</span>
                                 </div>
-                            </section>
-                            <section class="vitocell-mobile-circuit">
-                                <div class="vitocell-mobile-circuit-heading"><strong>HK3 · Fußbodenheizung</strong><span class="vitocell-mobile-pump active"><img src="../img/vitocal/Fan_active.gif" alt="">Pumpe aktiv</span></div>
-                                <div class="vitocell-mobile-values">
-                                    <span class="vitocell-mobile-temp" title="Fußbodenheizungs-Vorlauf"><span>Vorlauf</span><strong>35,0 °C</strong></span>
-                                    <span class="vitocell-mobile-temp" title="Fußbodenheizungs-Rücklauf"><span>Rücklauf</span><strong>29,0 °C</strong></span>
-                                    <span class="vitocell-mobile-temp" title="Mischerstellung Fußbodenheizung"><span>Mischer</span><strong>63 %</strong></span>
+                                <section class="vitocell-mobile-circuit">
+                                    <div class="vitocell-mobile-circuit-heading"><strong>Heizkörper</strong><span class="vitocell-mobile-pump">Pumpenstatus —</span></div>
+                                </section>
+                            </div>
+                            <div class="vitocell-mobile-circuit-column">
+                                <div class="vitocell-mobile-flow-row" aria-label="Fußbodenheizungs-Vorlauf und Rücklauf">
+                                    <span class="vitocell-mobile-flow-temp" title="Fußbodenheizungs-Vorlauf">VL 35,0 °C</span><i class="hot"></i><i class="cool"></i><span class="vitocell-mobile-flow-temp" title="Fußbodenheizungs-Rücklauf">RL 29,0 °C</span>
                                 </div>
-                            </section>
+                                <section class="vitocell-mobile-circuit">
+                                    <div class="vitocell-mobile-circuit-heading"><strong>Fußbodenheizung</strong><span class="vitocell-mobile-pump active"><img src="../img/vitocal/Fan_active.gif" alt="">Pumpe aktiv</span></div>
+                                </section>
+                            </div>
                         </div>
                     </div>
                 </div>

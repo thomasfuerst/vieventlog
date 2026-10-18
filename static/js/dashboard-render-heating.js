@@ -11,6 +11,24 @@
             return kf.compressorSpeed && kf.compressorSpeed.value > 0;
         }
 
+        function calculateHeatingCurveSupplyTarget(curveData) {
+            if (!curveData || !Number.isFinite(curveData.slope) || !Number.isFinite(curveData.shift) || !Number.isFinite(curveData.currentOutside)) {
+                return null;
+            }
+
+            const roomSetpoint = Number.isFinite(curveData.roomTempSetpoint) ? curveData.roomTempSetpoint : 20;
+            const difference = curveData.currentOutside - roomSetpoint;
+            let target = roomSetpoint + curveData.shift - curveData.slope * difference *
+                (1.4347 + 0.021 * difference + 247.9e-6 * difference * difference);
+
+            if (Number.isFinite(curveData.maxSupply) && target > curveData.maxSupply) {
+                target = curveData.maxSupply;
+            }
+
+            return Number.isFinite(target) ? target : null;
+        }
+        window.calculateHeatingCurveSupplyTarget = calculateHeatingCurveSupplyTarget;
+
         function renderDeviceHeader(deviceInfo, kf) {
             // Prefer device.name feature over modelId/displayName
             let deviceTitle = deviceInfo.modelId || deviceInfo.displayName;
@@ -154,29 +172,15 @@
             // --- GROUP 2: Heizkreis Soll/Ist & Leistung ---
             // Solltemperatur (Heizkurve)
             if (kf.outsideTemp && kf.heatingCurveSlope && kf.heatingCurveShift) {
-                const outsideTemp = kf.outsideTemp.value;
-                const slope = kf.heatingCurveSlope.value;
-                const shift = kf.heatingCurveShift.value;
+                const targetTemp = calculateHeatingCurveSupplyTarget({
+                    slope: kf.heatingCurveSlope.value,
+                    shift: kf.heatingCurveShift.value,
+                    currentOutside: kf.outsideTemp.value,
+                    roomTempSetpoint: window.heatingCurveData?.roomTempSetpoint,
+                    maxSupply: window.heatingCurveData?.maxSupply
+                });
 
-                // Get room setpoint temperature (default: 20°C)
-                let roomSetpoint = 20;
-                if (window.heatingCurveData && window.heatingCurveData.roomTempSetpoint) {
-                    roomSetpoint = window.heatingCurveData.roomTempSetpoint;
-                }
-
-                // Calculate target supply temperature using official Viessmann formula:
-                // VT = RTSoll + Niveau - Neigung * DAR * (1.4347 + 0.021 * DAR + 247.9 * 10^-6 * DAR^2)
-                // with DAR = AT - RTSoll
-                const DAR = outsideTemp - roomSetpoint;
-                let targetTemp = roomSetpoint + shift - slope * DAR * (1.4347 + 0.021 * DAR + 247.9 * 1e-6 * DAR * DAR);
-
-                // Cap at max supply temperature if available
-                const maxSupply = window.heatingCurveData && window.heatingCurveData.maxSupply;
-                if (maxSupply !== null && maxSupply !== undefined && targetTemp > maxSupply) {
-                    targetTemp = maxSupply;
-                }
-
-                tempsGroup2 += `
+                if (targetTemp !== null) tempsGroup2 += `
                     <div class="temp-item">
                         <span class="temp-label">Solltemperatur (Heizkurve)</span>
                         <div>

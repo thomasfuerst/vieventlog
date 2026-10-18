@@ -309,7 +309,9 @@
                         cyclesperdaystart: data.cyclesperdaystart,
                         showCyclesPerDay: data.showCyclesPerDay,
                         showRefrigerantVisual: data.showRefrigerantVisual !== undefined ? data.showRefrigerantVisual : true,
-                        useOtherRefrigerantPic: data.useOtherRefrigerantPic ?? null
+                        useOtherRefrigerantPic: data.useOtherRefrigerantPic ?? null,
+                        secondaryFlowNominal: data.secondaryFlowNominal || 0,
+                        primaryFlowNominal: data.primaryFlowNominal || 0
                     };
                 }
             } catch (error) {
@@ -336,7 +338,8 @@
 
                 showDeviceSettingsModal(installationId, deviceId, data.compressorRpmMin || 0, data.compressorRpmMax || 0, data.compressorPowerCorrectionFactor || 1.0, 
 										data.electricityPrice || 0.30, 	data.useAirIntakeTemperatureLabel, data.hasHotWaterBuffer, data.cyclesperdaystart, 
-										data.showCyclesPerDay, data.showRefrigerantVisual, data.useOtherRefrigerantPic || false);
+										data.showCyclesPerDay, data.showRefrigerantVisual, data.useOtherRefrigerantPic || false,
+										data.secondaryFlowNominal || 0, data.primaryFlowNominal || 0);
             } catch (error) {
                 console.error('Error loading device settings:', error);
                 showDeviceSettingsModal(installationId, deviceId, 0, 0, 1.0, 0.30, null, null, null, false, true);
@@ -345,7 +348,8 @@
 
         function showDeviceSettingsModal(installationId, deviceId, currentMin, currentMax, correctionFactor, 
 					electricityPrice, useAirIntakeTemperatureLabel, hasHotWaterBuffer, cyclesperdaystart, 
-					showCyclesPerDay, showRefrigerantVisual, useOtherRefrigerantPic) {
+					showCyclesPerDay, showRefrigerantVisual, useOtherRefrigerantPic,
+					secondaryFlowNominal = 0, primaryFlowNominal = 0) {
             const modal = document.createElement('div');
             modal.className = 'debug-modal';
             modal.style.display = 'flex';
@@ -424,6 +428,20 @@
                         <input type="number" id="electricityPrice" value="${electricityPrice.toFixed(2)}" step="0.01" min="0.01" max="1.00"
                                style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; font-size: 14px;">
                         <p style="color: #a0a0b0; font-size: 12px; margin-top: 5px;">Preis pro kWh für Verbrauchskosten-Berechnung in den Statistiken</p>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; color: #fff; margin-bottom: 8px; font-weight: 600;">
+                            Volumenstrom Heizwasser (l/h)
+                        </label>
+                        <input type="number" id="secondaryFlowNominal" value="${Number(secondaryFlowNominal) || 0}" step="10" min="0" max="20000"
+                               style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; font-size: 14px;">
+                        <label style="display: block; color: #fff; margin: 12px 0 8px; font-weight: 600;">
+                            Volumenstrom Sole bei 100 % Pumpe (l/h)
+                        </label>
+                        <input type="number" id="primaryFlowNominal" value="${Number(primaryFlowNominal) || 0}" step="10" min="0" max="20000"
+                               style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; font-size: 14px;">
+                        <p style="color: #a0a0b0; font-size: 12px; margin-top: 5px;">Ohne Durchfluss-/Stromsensor: Wärme = Heizwasser × Spreizung VL/RL, Strom = Wärme − Sole-Entzug. 0 = aus.</p>
                     </div>
 
                     <div style="margin-bottom: 20px;">
@@ -567,6 +585,8 @@
             const rpmMax = parseInt(document.getElementById('rpmMax').value) || 0;
             const powerCorrectionFactor = parseFloat(document.getElementById('powerCorrectionFactor').value) || 1.0;
             const electricityPrice = parseFloat(document.getElementById('electricityPrice').value) || 0.30;
+            const secondaryFlowNominal = Math.max(0, parseFloat(document.getElementById('secondaryFlowNominal').value) || 0);
+            const primaryFlowNominal = Math.max(0, parseFloat(document.getElementById('primaryFlowNominal').value) || 0);
 
             if (rpmMin >= rpmMax && rpmMax !== 0) {
                 alert('Minimum muss kleiner als Maximum sein');
@@ -642,7 +662,9 @@
                         cyclesperdaystart: cyclesperdaystart,
                         showCyclesPerDay: showCyclesPerDay,
                         showRefrigerantVisual: showRefrigerantVisual,
-                        useOtherRefrigerantPic: useOtherRefrigerantPic
+                        useOtherRefrigerantPic: useOtherRefrigerantPic,
+                        secondaryFlowNominal: secondaryFlowNominal,
+                        primaryFlowNominal: primaryFlowNominal
                     })
                 });
 
@@ -664,6 +686,8 @@
                     window.deviceSettingsCache[deviceKey].showCyclesPerDay = showCyclesPerDay;
                     window.deviceSettingsCache[deviceKey].showRefrigerantVisual = showRefrigerantVisual;
                     window.deviceSettingsCache[deviceKey].useOtherRefrigerantPic = useOtherRefrigerantPic;
+                    window.deviceSettingsCache[deviceKey].secondaryFlowNominal = secondaryFlowNominal;
+                    window.deviceSettingsCache[deviceKey].primaryFlowNominal = primaryFlowNominal;
 
                     alert('Einstellungen gespeichert!');
                     closeDeviceSettingsModal();

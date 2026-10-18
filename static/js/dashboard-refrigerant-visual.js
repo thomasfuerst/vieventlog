@@ -54,8 +54,10 @@ function snapshotCompressorState(snapshot) {
 }
 
 function compressorLoadType(snapshot) {
+    if (typeof snapshot?.dhw_charging_active === 'boolean') {
+        return snapshot.dhw_charging_active ? 'Warmwasserladung' : 'Heizungsladung';
+    }
     if (snapshot?.dhw_pump_active === true) return 'Warmwasserladung';
-    if (snapshot?.dhw_pump_active === false) return 'Heizungsladung';
     return 'Betriebsart nicht erfasst';
 }
 
@@ -66,6 +68,12 @@ function formatCompressorDuration(durationMs, running = false) {
         ? `${minutes} min`
         : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')} min`;
     return running ? `läuft seit ${duration}` : duration;
+}
+
+function cumulativeEnergyDelta(previousValue, currentValue, sameDay) {
+    if (!Number.isFinite(previousValue) || !Number.isFinite(currentValue)) return null;
+    if (!sameDay || currentValue < previousValue) return Math.max(0, currentValue);
+    return currentValue - previousValue;
 }
 
 function buildDailyCompressorStarts(snapshots, now = new Date(), sampleIntervalMinutes = 1) {
@@ -152,13 +160,42 @@ function buildDailyCompressorStarts(snapshots, now = new Date(), sampleIntervalM
                     : loadType === 'Heizungsladung' ? day.energy.heating
                     : day.energy.unknown;
                 const hours = elapsedMs / 3600000;
-                const electricalSamples = [previousSnapshot.compressor_power, snapshot.compressor_power]
-                    .filter(value => typeof value === 'number' && Number.isFinite(value));
-                if (electricalSamples.length) {
-                    const averageWatts = electricalSamples.reduce((sum, value) => sum + value, 0) / electricalSamples.length;
-                    energy.electricityKwh += averageWatts * hours / 1000;
-                    energy.hasElectricity = true;
+                const previousDay = dayForTimestamp(previousTime);
+                const sameDay = previousDay?.key === day.key;
+                const dhwDelta = cumulativeEnergyDelta(previousSnapshot.power_consumption_dhw_kwh, snapshot.power_consumption_dhw_kwh, sameDay);
+                const heatingDelta = cumulativeEnergyDelta(previousSnapshot.power_consumption_heating_kwh, snapshot.power_consumption_heating_kwh, sameDay);
+                const totalDelta = cumulativeEnergyDelta(previousSnapshot.power_consumption_total_kwh, snapshot.power_consumption_total_kwh, sameDay);
+                const hasEnergyCounters = dhwDelta !== null || heatingDelta !== null || totalDelta !== null;
+
+                if (dhwDelta !== null) {
+                    day.energy.dhw.electricityKwh += dhwDelta;
+                    day.energy.dhw.hasElectricity = true;
                     day.hasData = true;
+                }
+                if (heatingDelta !== null) {
+                    day.energy.heating.electricityKwh += heatingDelta;
+                    day.energy.heating.hasElectricity = true;
+                    day.hasData = true;
+                }
+                if (totalDelta !== null) {
+                    const categorizedDelta = (dhwDelta || 0) + (heatingDelta || 0);
+                    const unassignedDelta = Math.max(0, totalDelta - categorizedDelta);
+                    if (unassignedDelta > 0 || (dhwDelta === null && heatingDelta === null)) {
+                        day.energy.unknown.electricityKwh += unassignedDelta || totalDelta;
+                        day.energy.unknown.hasElectricity = true;
+                    }
+                    day.hasData = true;
+                }
+
+                if (!hasEnergyCounters) {
+                    const electricalSamples = [previousSnapshot.compressor_power, snapshot.compressor_power]
+                        .filter(value => typeof value === 'number' && Number.isFinite(value));
+                    if (electricalSamples.length) {
+                        const averageWatts = electricalSamples.reduce((sum, value) => sum + value, 0) / electricalSamples.length;
+                        energy.electricityKwh += averageWatts * hours / 1000;
+                        energy.hasElectricity = true;
+                        day.hasData = true;
+                    }
                 }
                 const thermalSamples = [previousSnapshot.thermal_power, snapshot.thermal_power]
                     .filter(value => typeof value === 'number' && Number.isFinite(value));
@@ -286,13 +323,7 @@ function renderCompressorStartsMiniChart(container, days) {
         const title = [
             `${day.weekday} ${day.dateLabel} · ${day.hasData ? `${day.count} Verdichterstarts` : 'keine Daten'}`,
             'Starts:',
-            ...startLines,
-            'Energie (Strom/Wärme in kWh):',
-            `Warmwasser: ${energyText(day.energy.dhw)}`,
-            `Heizung: ${energyText(day.energy.heating)}`,
-            ...(day.energy.unknown.hasElectricity || day.energy.unknown.hasThermal
-                ? [`Nicht zugeordnet: ${energyText(day.energy.unknown)}`]
-                : [])
+            ...startLines
         ].join('\n');
         const averageRuntime = day.averageRuntimeMs === null
             ? '—'
@@ -308,9 +339,9 @@ function renderCompressorStartsMiniChart(container, days) {
             <span class="compressor-start-date">${day.weekday}</span>
             <div class="compressor-start-track"><div class="compressor-start-bar" style="width:${width}%"></div></div>
             <span class="compressor-start-count">${value}</span>
-            <span class="compressor-start-energy compressor-start-total" title="Summe der erfassten Stromverbräuche / Wärmemengen in kWh">Σ ${energyText(totalEnergy)}</span>
-            <span class="compressor-start-energy compressor-start-dhw" title="Warmwasser: Stromverbrauch / Wärmemenge in kWh">WW ${energyText(day.energy.dhw)}</span>
-            <span class="compressor-start-energy compressor-start-heating" title="Heizung: Stromverbrauch / Wärmemenge in kWh">H ${energyText(day.energy.heating)}</span>
+            <span class="compressor-start-energy compressor-start-total">Σ ${energyText(totalEnergy)}</span>
+            <span class="compressor-start-energy compressor-start-dhw">WW ${energyText(day.energy.dhw)}</span>
+            <span class="compressor-start-energy compressor-start-heating">H ${energyText(day.energy.heating)}</span>
             <span class="compressor-start-runtime" title="Mittlere Verdichterlaufzeit je Start">Ø ${averageRuntime}</span>
         </div>`;
     }).join('');
@@ -338,31 +369,36 @@ function getHeatingPumpState(statusFeature, speedFeature) {
 
 function renderVitocellHydraulics(keyFeatures, compressorActive, activeFeed) {
     const circuits = keyFeatures.heatingCircuits || [];
+    const isCircuitActive = circuit => circuit?.active?.value === true;
+    const circuitSupplyTarget = circuit => {
+        const circuitIndex = Number(circuit?.number) - 1;
+        if (!isCircuitActive(circuit) || !Number.isInteger(circuitIndex) || typeof window.calculateHeatingCurveSupplyTarget !== 'function') return null;
+        return window.calculateHeatingCurveSupplyTarget(window.heatingCurveData?.[String(circuitIndex)]);
+    };
     const badges = [
         { feature: compressorActive ? keyFeatures.primarySupplyTemp : null, title: 'Sole-Eintritt zur Vitocal', left: 19, top: 38 },
         { feature: compressorActive ? keyFeatures.primaryReturnTemp : null, title: 'Sole-Austritt zur Erdsonde', left: 19, top: 47 },
-        { feature: keyFeatures.dhwTemp, title: 'Temperatur Warmwasserzone', left: 50.4, top: 15 },
-        { feature: keyFeatures.bufferTempTop, title: 'Temperatur Puffer oben · Heizzone', left: 50.4, top: 70 },
-        { feature: circuits[0]?.returnTemp, title: 'Pufferheizkreis-Rücklauf', left: 39, top: 79 },
-        { feature: circuits[1]?.supplyTemp, title: 'Heizkörper-Vorlauf', left: 67, top: 26 },
-        { feature: circuits[1]?.returnTemp, title: 'Heizkörper-Rücklauf', left: 96, top: 46, alignRight: true },
-        { feature: circuits[2]?.supplyTemp, title: 'Fußbodenheizungs-Vorlauf', left: 67, top: 68 },
-        { feature: circuits[2]?.returnTemp, title: 'Fußbodenheizungs-Rücklauf', left: 96, top: 72, alignRight: true }
+        { feature: keyFeatures.dhwTemp, target: numericFeatureValue(keyFeatures.dhwTarget), title: 'Temperatur Warmwasserzone', left: 50.4, top: 15 },
+        { feature: keyFeatures.bufferTempTop, target: circuitSupplyTarget(circuits[0]), title: 'Temperatur Puffer oben · Heizzone', left: 50.4, top: 70 },
+        { feature: isCircuitActive(circuits[0]) ? keyFeatures.returnTemp : null, title: 'Pufferheizkreis-Rücklauf', left: 39, top: 79 },
+        { feature: isCircuitActive(circuits[1]) ? circuits[1].supplyTemp : null, target: circuitSupplyTarget(circuits[1]), title: 'Heizkörper-Vorlauf', left: 67, top: 26 },
+        { feature: isCircuitActive(circuits[1]) ? circuits[1].returnTemp : null, title: 'Heizkörper-Rücklauf', left: 96, top: 46, alignRight: true },
+        { feature: isCircuitActive(circuits[2]) ? circuits[2].supplyTemp : null, target: circuitSupplyTarget(circuits[2]), title: 'Fußbodenheizungs-Vorlauf', left: 67, top: 68 },
+        { feature: isCircuitActive(circuits[2]) ? circuits[2].returnTemp : null, title: 'Fußbodenheizungs-Rücklauf', left: 96, top: 72, alignRight: true }
     ];
-    const temperatureBadges = badges.map(({ feature, title, left, top, alignRight }) => {
+    const temperatureBadges = badges.map(({ feature, target, title, left, top, alignRight }) => {
         const value = numericFeatureValue(feature);
-        if (value === null) return '';
+        const targetValue = Number.isFinite(target) ? target : null;
+        if (value === null && targetValue === null) return '';
         const alignment = alignRight ? ' vitocell-temp-badge-right' : '';
-        return `<span class="vitocell-temp-badge${alignment}" title="${title}" style="left:${left}%;top:${top}%">${value.toFixed(1)} °C</span>`;
+        const current = value === null ? '—' : `${value.toFixed(1)} °C`;
+        const targetMarkup = targetValue === null ? '' : `<small class="vitocell-temp-target">Soll ${targetValue.toFixed(1)} °C</small>`;
+        return `<span class="vitocell-temp-badge${alignment}" title="${title}" style="left:${left}%;top:${top}%"><span>${current}</span>${targetMarkup}</span>`;
     }).join('');
-    const hk1SupplyValue = numericFeatureValue(circuits[0]?.supplyTemp);
-    const hk1SupplyBadge = activeFeed && hk1SupplyValue !== null
-        ? `<span class="vitocell-temp-badge" title="Pufferheizkreis-Vorlauf · ${activeFeed === 'dhw' ? 'Warmwasserzone' : 'Heizzone'}" style="left:41.5%;top:${activeFeed === 'dhw' ? 16 : 63}%">${hk1SupplyValue.toFixed(1)} °C</span>`
+    const hk1SupplyValue = numericFeatureValue(keyFeatures.secondarySupplyTemp);
+    const hk1SupplyBadge = activeFeed && isCircuitActive(circuits[0]) && hk1SupplyValue !== null
+        ? `<span class="vitocell-temp-badge" title="Pufferheizkreis-Vorlauf · ${activeFeed === 'dhw' ? 'Warmwasserzone' : 'Heizzone'}" style="left:41.5%;top:${activeFeed === 'dhw' ? 16 : 63}%"><span>${hk1SupplyValue.toFixed(1)} °C</span><small class="vitocell-temp-target">Soll ${circuitSupplyTarget(circuits[0])?.toFixed(1) ?? '—'} °C</small></span>`
         : '';
-    const mixerPosition = numericFeatureValue(circuits[2]?.mixerPosition);
-    const mixerBadge = mixerPosition === null || !Number.isFinite(mixerPosition)
-        ? ''
-        : `<span class="vitocell-state-badge" title="Mischerstellung Fußbodenheizung" style="left:81.1%;top:78%">Mischer ${Math.round(mixerPosition)} %</span>`;
     const pumpPositions = [
         { left: 72, top: 30.8, title: 'Heizkörper' },
         { left: 72, top: 73.2, title: 'Fußbodenheizung' }
@@ -374,9 +410,18 @@ function renderVitocellHydraulics(keyFeatures, compressorActive, activeFeed) {
         if (state !== true) return '';
         return `<img class="vitocell-pump-motor" src="/static/img/vitocal/Fan_active.gif" alt="${position.title}: Pumpe aktiv" title="${position.title}: Heizkreispumpe aktiv" style="${style}">`;
     }).join('');
-    const mobileTemperature = (feature, label, unit = '°C') => {
+    const mobileTemperature = (feature, label, unit = '°C', targetTemperature = null) => {
         const value = numericFeatureValue(feature);
-        return `<span class="vitocell-mobile-temp" title="${label}"><span>${label}</span><strong>${value === null ? '—' : `${value.toFixed(1)} ${unit}`}</strong></span>`;
+        const target = Number.isFinite(targetTemperature)
+            ? `<small class="vitocell-mobile-temp-target">Soll ${targetTemperature.toFixed(1)} ${unit}</small>`
+            : '';
+        return `<span class="vitocell-mobile-temp" title="${label}"><span>${label}</span><strong>${value === null ? '—' : `${value.toFixed(1)} ${unit}`}</strong>${target}</span>`;
+    };
+    const mobileFlowTemperature = (feature, title, shortLabel, active = true, targetTemperature = null) => {
+        const value = active ? numericFeatureValue(feature) : null;
+        const target = active && Number.isFinite(targetTemperature) ? targetTemperature : null;
+        const empty = value === null && target === null;
+        return `<span class="vitocell-mobile-flow-temp${empty ? ' empty' : ''}" title="${title}">${value === null ? '' : `<span class="vitocell-mobile-flow-current">${shortLabel} ${value.toFixed(1)} °C</span>`}${target === null ? '' : `<span class="vitocell-mobile-flow-target">Soll ${target.toFixed(1)} °C</span>`}</span>`;
     };
     const mobilePumpStatus = circuit => {
         const state = getHeatingPumpState(circuit.pumpStatus, circuit.pumpSpeed);
@@ -405,7 +450,6 @@ function renderVitocellHydraulics(keyFeatures, compressorActive, activeFeed) {
                         alt="Schematischer Solekreis und Vitocell 120-E mit Warmwasserzone, Heizzone, Heizkörper- und Fußbodenheizkreis">
                     ${activeMotor}
                     ${hk1SupplyBadge}
-                    ${mixerBadge}
                     ${pumpIndicators}
                     ${temperatureBadges}
                 </div>
@@ -413,54 +457,59 @@ function renderVitocellHydraulics(keyFeatures, compressorActive, activeFeed) {
                     <div class="vitocell-mobile-sole-loop">
                         <div class="vitocell-mobile-node">
                             <strong>Erdsonde</strong>
-                            ${mobileTemperature(keyFeatures.primarySupplyTemp, 'Sole-Eintritt zur Vitocal')}
-                            ${mobileTemperature(keyFeatures.primaryReturnTemp, 'Sole-Austritt zur Erdsonde')}
                         </div>
-                        <div class="vitocell-mobile-flow" aria-hidden="true"><i class="hot"></i><i class="cool"></i></div>
+                        <div class="vitocell-mobile-flow">
+                            ${mobileFlowTemperature(keyFeatures.primarySupplyTemp, 'Sole-Eintritt zur Vitocal', 'Ein', compressorActive)}
+                            <i class="hot"></i>
+                            ${mobileFlowTemperature(keyFeatures.primaryReturnTemp, 'Sole-Austritt zur Erdsonde', 'Aus', compressorActive)}
+                            <i class="cool"></i>
+                        </div>
                         <div class="vitocell-mobile-node vitocell-mobile-heat-pump">
                             <strong>Vitocal 200-G</strong>
                             ${mobileActiveMotor}
                         </div>
                     </div>
                     <div class="vitocell-mobile-flow-pair" aria-hidden="true"><i class="hot"></i><i class="cool"></i></div>
-                    <div class="vitocell-mobile-connection">HK1 · Vorlauf zum Puffer / Rücklauf zur Vitocal</div>
+                    <div class="vitocell-mobile-flow-row" aria-label="Puffer-Vorlauf und Rücklauf">
+                        ${mobileFlowTemperature(keyFeatures.secondarySupplyTemp, 'Puffer-Vorlauf', 'VL', isCircuitActive(circuits[0]), circuitSupplyTarget(circuits[0]))}
+                        <i class="hot"></i><i class="cool"></i>
+                        ${mobileFlowTemperature(keyFeatures.returnTemp, 'Puffer-Rücklauf', 'RL', isCircuitActive(circuits[0]))}
+                    </div>
                     <div class="vitocell-mobile-tank">
                         <section class="vitocell-mobile-zone warm">
                             <strong>Warmwasserzone</strong>
                             <div class="vitocell-mobile-values">
-                                ${mobileTemperature(keyFeatures.dhwTemp, 'Speichertemperatur')}
-                                ${mobileTemperature(circuits[0]?.supplyTemp, 'HK1 Vorlauf')}
+                                ${mobileTemperature(keyFeatures.dhwTemp, 'Speichertemperatur', '°C', numericFeatureValue(keyFeatures.dhwTarget))}
                             </div>
                         </section>
                         <section class="vitocell-mobile-zone heating">
                             <strong>Heizzone</strong>
                             <div class="vitocell-mobile-values">
-                                ${mobileTemperature(keyFeatures.bufferTempTop, 'Puffer oben')}
-                                ${mobileTemperature(circuits[0]?.returnTemp, 'HK1 Rücklauf')}
+                                ${mobileTemperature(keyFeatures.bufferTempTop, 'Puffer oben', '°C', circuitSupplyTarget(circuits[0]))}
                             </div>
                         </section>
                     </div>
-                    <div class="vitocell-mobile-connection">HK2 / HK3 · Vorlauf und gemeinsamer Rücklauf</div>
-                    <div class="vitocell-mobile-circuit-flows" aria-hidden="true">
-                        <div class="vitocell-mobile-flow-pair"><i class="hot"></i><i class="cool"></i></div>
-                        <div class="vitocell-mobile-flow-pair"><i class="hot"></i><i class="cool"></i></div>
-                    </div>
-                    <div class="vitocell-mobile-circuits">
-                        <section class="vitocell-mobile-circuit">
-                            <div class="vitocell-mobile-circuit-heading"><strong>HK2 · Heizkörper</strong>${mobilePumpStatus(circuits[1] || {})}</div>
-                            <div class="vitocell-mobile-values">
-                                ${mobileTemperature(circuits[1]?.supplyTemp, 'Vorlauf')}
-                                ${mobileTemperature(circuits[1]?.returnTemp, 'Rücklauf')}
+                    <div class="vitocell-mobile-circuit-columns">
+                        <div class="vitocell-mobile-circuit-column">
+                            <div class="vitocell-mobile-flow-row" aria-label="Heizkörper-Vorlauf und Rücklauf">
+                                ${mobileFlowTemperature(circuits[1]?.supplyTemp, 'Heizkörper-Vorlauf', 'VL', isCircuitActive(circuits[1]), circuitSupplyTarget(circuits[1]))}
+                                <i class="hot"></i><i class="cool"></i>
+                                ${mobileFlowTemperature(circuits[1]?.returnTemp, 'Heizkörper-Rücklauf', 'RL', isCircuitActive(circuits[1]))}
                             </div>
-                        </section>
-                        <section class="vitocell-mobile-circuit">
-                            <div class="vitocell-mobile-circuit-heading"><strong>HK3 · Fußbodenheizung</strong>${mobilePumpStatus(circuits[2] || {})}</div>
-                            <div class="vitocell-mobile-values">
-                                ${mobileTemperature(circuits[2]?.supplyTemp, 'Vorlauf')}
-                                ${mobileTemperature(circuits[2]?.returnTemp, 'Rücklauf')}
-                                ${mobileTemperature(circuits[2]?.mixerPosition, 'Mischerstellung', '%')}
+                            <section class="vitocell-mobile-circuit">
+                                <div class="vitocell-mobile-circuit-heading"><strong>Heizkörper</strong>${mobilePumpStatus(circuits[1] || {})}</div>
+                            </section>
+                        </div>
+                        <div class="vitocell-mobile-circuit-column">
+                            <div class="vitocell-mobile-flow-row" aria-label="Fußbodenheizungs-Vorlauf und Rücklauf">
+                                ${mobileFlowTemperature(circuits[2]?.supplyTemp, 'Fußbodenheizung-Vorlauf', 'VL', isCircuitActive(circuits[2]), circuitSupplyTarget(circuits[2]))}
+                                <i class="hot"></i><i class="cool"></i>
+                                ${mobileFlowTemperature(circuits[2]?.returnTemp, 'Fußbodenheizung-Rücklauf', 'RL', isCircuitActive(circuits[2]))}
                             </div>
-                        </section>
+                            <section class="vitocell-mobile-circuit">
+                                <div class="vitocell-mobile-circuit-heading"><strong>Fußbodenheizung</strong>${mobilePumpStatus(circuits[2] || {})}</div>
+                            </section>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -493,7 +542,8 @@ function renderRefrigerantCircuitVisual(keyFeatures) {
 
     const compressorActive = keyFeatures.compressorActive?.value === true ||
         (typeof keyFeatures.compressorSpeed?.value === 'number' && keyFeatures.compressorSpeed.value > 0);
-    const dhwActive = ['on', 'active', 'dhw'].includes(keyFeatures.dhwStatus?.value) ||
+    const dhwActive = keyFeatures.dhwChargingActive?.value === true ||
+        ['on', 'active', 'dhw'].includes(keyFeatures.dhwStatus?.value) ||
         keyFeatures.operatingMode?.value === 'dhw';
     const heatingCircuitActive = ['heating', 'dhwAndHeating'].includes(keyFeatures.operatingMode?.value) ||
         (keyFeatures.heatingCircuits || []).some(circuit => {

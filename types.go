@@ -146,46 +146,6 @@ type Feature struct {
 	GatewayID  string                 `json:"gatewayId,omitempty"`
 	DeviceID   string                 `json:"deviceId,omitempty"`
 	Timestamp  string                 `json:"timestamp,omitempty"`
-	// Commands is only used while parsing (e.g. schedule constraints) and stripped afterwards
-	Commands map[string]FeatureCommand `json:"commands,omitempty"`
-}
-
-// FeatureCommand represents a command offered by a feature (e.g. setSchedule)
-type FeatureCommand struct {
-	IsExecutable bool                           `json:"isExecutable"`
-	Params       map[string]FeatureCommandParam `json:"params"`
-}
-
-// FeatureCommandParam describes a single command parameter
-type FeatureCommandParam struct {
-	Type        string                 `json:"type"`
-	Required    bool                   `json:"required"`
-	Constraints map[string]interface{} `json:"constraints,omitempty"`
-}
-
-// ScheduleEntry is a single time window of a Viessmann schedule
-type ScheduleEntry struct {
-	Start    string `json:"start"`
-	End      string `json:"end"`
-	Mode     string `json:"mode"`
-	Position int    `json:"position"`
-}
-
-// ScheduleConstraints are the limits reported by the setSchedule command
-type ScheduleConstraints struct {
-	Modes          []string `json:"modes"`
-	DefaultMode    string   `json:"defaultMode"`
-	MaxEntries     int      `json:"maxEntries"`
-	Resolution     int      `json:"resolution"` // minutes
-	OverlapAllowed bool     `json:"overlapAllowed"`
-}
-
-// ScheduleInfo is a parsed schedule feature (heating.dhw.schedule, ...) including its write constraints
-type ScheduleInfo struct {
-	Active      *bool                      `json:"active,omitempty"`
-	Entries     map[string][]ScheduleEntry `json:"entries"`
-	Writable    bool                       `json:"writable"`
-	Constraints *ScheduleConstraints       `json:"constraints,omitempty"`
 }
 
 // FeatureValue represents the parsed value of a feature
@@ -210,7 +170,6 @@ type DeviceFeatures struct {
 	DHW            map[string]FeatureValue `json:"dhw"` // Domestic Hot Water
 	Circuits       map[string]FeatureValue `json:"circuits"`
 	Other          map[string]FeatureValue `json:"other"`
-	Schedules      map[string]ScheduleInfo `json:"schedules"`
 	RawFeatures    []Feature               `json:"rawFeatures"`
 	LastUpdate     time.Time               `json:"lastUpdate"`
 }
@@ -229,8 +188,8 @@ type DeviceSettingsRequest struct {
 	ShowCyclesPerDay                *bool    `json:"showCyclesPerDay,omitempty"`
 	ShowRefrigerantVisual           *bool    `json:"showRefrigerantVisual,omitempty"`
 	UseOtherRefrigerantPic          *bool    `json:"useOtherRefrigerantPic,omitempty"`
-	ShowDhwSchedule                 *bool    `json:"showDhwSchedule,omitempty"`
-	ShowCirculationSchedule         *bool    `json:"showCirculationSchedule,omitempty"`
+	SecondaryFlowNominal            *float64 `json:"secondaryFlowNominal,omitempty"`
+	PrimaryFlowNominal              *float64 `json:"primaryFlowNominal,omitempty"`
 }
 
 type DeviceSettingsResponse struct {
@@ -246,8 +205,8 @@ type DeviceSettingsResponse struct {
 	ShowCyclesPerDay                *bool    `json:"showCyclesPerDay,omitempty"`
 	ShowRefrigerantVisual           *bool    `json:"showRefrigerantVisual,omitempty"`
 	UseOtherRefrigerantPic          *bool    `json:"useOtherRefrigerantPic,omitempty"`
-	ShowDhwSchedule                 *bool    `json:"showDhwSchedule,omitempty"`
-	ShowCirculationSchedule         *bool    `json:"showCirculationSchedule,omitempty"`
+	SecondaryFlowNominal            float64  `json:"secondaryFlowNominal,omitempty"`
+	PrimaryFlowNominal              float64  `json:"primaryFlowNominal,omitempty"`
 }
 
 type DebugDeviceInfo struct {
@@ -374,11 +333,18 @@ type TemperatureSnapshot struct {
 	// Pump status
 	CirculationPumpActive *bool `json:"circulation_pump_active,omitempty"`
 	DHWPumpActive         *bool `json:"dhw_pump_active,omitempty"`
+	DHWChargingActive     *bool `json:"dhw_charging_active,omitempty"`
 	InternalPumpActive    *bool `json:"internal_pump_active,omitempty"`
 
+	// Cumulative electrical energy counters for the current day (kWh).
+	PowerConsumptionTotalKWh   *float64 `json:"power_consumption_total_kwh,omitempty"`
+	PowerConsumptionDHWKWh     *float64 `json:"power_consumption_dhw_kwh,omitempty"`
+	PowerConsumptionHeatingKWh *float64 `json:"power_consumption_heating_kwh,omitempty"`
+
 	// Flow/Energy
-	VolumetricFlow *float64 `json:"volumetric_flow,omitempty"`
-	ThermalPower   *float64 `json:"thermal_power,omitempty"`
+	VolumetricFlow      *float64 `json:"volumetric_flow,omitempty"`
+	ThermalPower        *float64 `json:"thermal_power,omitempty"`
+	PrimaryPumpRotation *float64 `json:"-"` // Brine pump speed in percent, only used for derived values
 	COP            *float64 `json:"cop,omitempty"`
 	PressureSupply *float64 `json:"pressure_supply,omitempty"` // Heizwasserdruck (bar)
 

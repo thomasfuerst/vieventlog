@@ -138,6 +138,10 @@ func InitEventDatabase(dbPath string) error {
 		compressor_power REAL,
 		circulation_pump_active INTEGER,
 		dhw_pump_active INTEGER,
+		dhw_charging_active INTEGER,
+		power_consumption_total_kwh REAL,
+		power_consumption_dhw_kwh REAL,
+		power_consumption_heating_kwh REAL,
 		internal_pump_active INTEGER,
 		volumetric_flow REAL,
 		thermal_power REAL,
@@ -648,6 +652,34 @@ func runSchemaMigrations() error {
 		log.Println("Migration 8 completed: Optimized temperature_snapshots indices")
 	}
 
+	// Migration 9: Store the explicit DHW charging state from the ViCare API.
+	if !migrationApplied("add_dhw_charging_active") {
+		if !columnExists("temperature_snapshots", "dhw_charging_active") {
+			if _, err := eventDB.Exec("ALTER TABLE temperature_snapshots ADD COLUMN dhw_charging_active INTEGER"); err != nil {
+				return fmt.Errorf("migration 9 failed: %v", err)
+			}
+		}
+		if err := recordMigration(9, "add_dhw_charging_active", "Store explicit DHW charging state from API"); err != nil {
+			return fmt.Errorf("failed to record migration 9: %v", err)
+		}
+		log.Println("Migration 9 completed: Added dhw_charging_active")
+	}
+
+	// Migration 10: Store cumulative daily electricity counters when exposed by the API.
+	if !migrationApplied("add_power_consumption_counters") {
+		for _, column := range []string{"power_consumption_total_kwh", "power_consumption_dhw_kwh", "power_consumption_heating_kwh"} {
+			if !columnExists("temperature_snapshots", column) {
+				if _, err := eventDB.Exec(fmt.Sprintf("ALTER TABLE temperature_snapshots ADD COLUMN %s REAL", column)); err != nil {
+					return fmt.Errorf("migration 10 failed (%s): %v", column, err)
+				}
+			}
+		}
+		if err := recordMigration(10, "add_power_consumption_counters", "Store cumulative daily electricity counters"); err != nil {
+			return fmt.Errorf("failed to record migration 10: %v", err)
+		}
+		log.Println("Migration 10 completed: Added daily power consumption counters")
+	}
+
 	return nil
 }
 
@@ -954,7 +986,7 @@ func SaveTemperatureSnapshot(snapshot *TemperatureSnapshot) error {
 	defer dbMutex.Unlock()
 
 	// Convert bool pointers to nullable ints
-	var compressorActiveInt, circulationPumpActiveInt, dhwPumpActiveInt, internalPumpActiveInt *int
+	var compressorActiveInt, circulationPumpActiveInt, dhwPumpActiveInt, dhwChargingActiveInt, internalPumpActiveInt *int
 	if snapshot.CompressorActive != nil {
 		val := 0
 		if *snapshot.CompressorActive {
@@ -975,6 +1007,13 @@ func SaveTemperatureSnapshot(snapshot *TemperatureSnapshot) error {
 			val = 1
 		}
 		dhwPumpActiveInt = &val
+	}
+	if snapshot.DHWChargingActive != nil {
+		val := 0
+		if *snapshot.DHWChargingActive {
+			val = 1
+		}
+		dhwChargingActiveInt = &val
 	}
 	if snapshot.InternalPumpActive != nil {
 		val := 0
@@ -1000,8 +1039,16 @@ func SaveTemperatureSnapshot(snapshot *TemperatureSnapshot) error {
 			circulation_pump_active, dhw_pump_active, internal_pump_active,
 			volumetric_flow, thermal_power, cop,
 			heating_circuit_0_delta_t, heating_circuit_1_delta_t, heating_circuit_2_delta_t, heating_circuit_3_delta_t,
-			four_way_valve, burner_modulation, secondary_heat_generator_status,four_way_valve_current,four_way_valve_target,pressure_supply
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			four_way_valve, burner_modulation, secondary_heat_generator_status,four_way_valve_current,four_way_valve_target,pressure_supply,
+			dhw_charging_active, power_consumption_total_kwh, power_consumption_dhw_kwh, power_consumption_heating_kwh
+		) VALUES (
+			?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?, ?
+		)
 	`
 
 	_, err := eventDB.Exec(insertSQL,
@@ -1058,6 +1105,10 @@ func SaveTemperatureSnapshot(snapshot *TemperatureSnapshot) error {
 		snapshot.FourWayValveCurrent,
 		snapshot.FourWayValveTarget,
 		snapshot.PressureSupply,
+		dhwChargingActiveInt,
+		snapshot.PowerConsumptionTotalKWh,
+		snapshot.PowerConsumptionDHWKWh,
+		snapshot.PowerConsumptionHeatingKWh,
 	)
 
 	if err != nil {
@@ -1091,7 +1142,8 @@ func GetTemperatureSnapshots(installationID, gatewayID, deviceID string, startTi
 			circulation_pump_active, dhw_pump_active, internal_pump_active,
 			volumetric_flow, thermal_power, cop,
 			heating_circuit_0_delta_t, heating_circuit_1_delta_t, heating_circuit_2_delta_t, heating_circuit_3_delta_t,
-			four_way_valve, burner_modulation, secondary_heat_generator_status,four_way_valve_current,four_way_valve_target,pressure_supply
+			four_way_valve, burner_modulation, secondary_heat_generator_status,four_way_valve_current,four_way_valve_target,pressure_supply,
+			dhw_charging_active, power_consumption_total_kwh, power_consumption_dhw_kwh, power_consumption_heating_kwh
 		FROM temperature_snapshots
 		WHERE installation_id = ? AND timestamp >= ? AND timestamp <= ?
 	`
@@ -1126,7 +1178,7 @@ func GetTemperatureSnapshots(installationID, gatewayID, deviceID string, startTi
 	for rows.Next() {
 		var snapshot TemperatureSnapshot
 		var timestampStr string
-		var compressorActiveInt, circulationPumpActiveInt, dhwPumpActiveInt, internalPumpActiveInt *int
+		var compressorActiveInt, circulationPumpActiveInt, dhwPumpActiveInt, dhwChargingActiveInt, internalPumpActiveInt *int
 
 		err := rows.Scan(
 			&timestampStr,
@@ -1181,6 +1233,10 @@ func GetTemperatureSnapshots(installationID, gatewayID, deviceID string, startTi
 			&snapshot.FourWayValveCurrent,
 			&snapshot.FourWayValveTarget,
 			&snapshot.PressureSupply,
+			&dhwChargingActiveInt,
+			&snapshot.PowerConsumptionTotalKWh,
+			&snapshot.PowerConsumptionDHWKWh,
+			&snapshot.PowerConsumptionHeatingKWh,
 		)
 
 		if err != nil {
@@ -1208,6 +1264,10 @@ func GetTemperatureSnapshots(installationID, gatewayID, deviceID string, startTi
 		if dhwPumpActiveInt != nil {
 			val := *dhwPumpActiveInt == 1
 			snapshot.DHWPumpActive = &val
+		}
+		if dhwChargingActiveInt != nil {
+			val := *dhwChargingActiveInt == 1
+			snapshot.DHWChargingActive = &val
 		}
 		if internalPumpActiveInt != nil {
 			val := *internalPumpActiveInt == 1

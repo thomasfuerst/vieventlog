@@ -48,8 +48,8 @@ type DeviceSettings struct {
 	ShowCyclesPerDay                bool                      `json:"showCyclesPerDay,omitempty"`             // Show/hide cycles per day in dashboard
 	ShowRefrigerantVisual           *bool                     `json:"showRefrigerantVisual,omitempty"`        // Show/hide refrigerant circuit visualization (default: true)
 	UseOtherRefrigerantPic          *bool                     `json:"useOtherRefrigerantPic,omitempty"`       // use different picture for refrigerant visual (default: false)
-	ShowDhwSchedule                 *bool                     `json:"showDhwSchedule,omitempty"`              // Show/hide DHW schedule in hot water card (default: true)
-	ShowCirculationSchedule         *bool                     `json:"showCirculationSchedule,omitempty"`      // Show/hide DHW circulation pump schedule (default: true)
+	SecondaryFlowNominal            float64                   `json:"secondaryFlowNominal,omitempty"`         // Heating water flow through the heat pump (l/h), used when no flow sensor exists
+	PrimaryFlowNominal              float64                   `json:"primaryFlowNominal,omitempty"`           // Brine flow at 100 % pump rotation (l/h)
 }
 
 type HybridProControlSettings struct {
@@ -93,10 +93,8 @@ type EventArchiveSettings struct {
 }
 
 type AccountStore struct {
-	Accounts             map[string]*Account   `json:"accounts"`                  // Key is account ID
-	EventArchiveSettings *EventArchiveSettings `json:"eventArchiveSettings"`      // Global event archive settings
-	AISettings           *AISettings           `json:"aiSettings,omitempty"`      // AI assistant settings (LLM providers, MCP)
-	WeatherSettings      *WeatherSettings      `json:"weatherSettings,omitempty"` // OpenWeatherMap location and API key for scripts
+	Accounts             map[string]*Account   `json:"accounts"`             // Key is account ID
+	EventArchiveSettings *EventArchiveSettings `json:"eventArchiveSettings"` // Global event archive settings
 }
 
 // SaveCredentials stores credentials using the configured storage backend

@@ -434,6 +434,7 @@
                     const prefix = `heating.circuits.${apiIndex}`;
                     return {
                         number: apiIndex + 1,
+                        active: findNested(prefix, 'active'),
                         supplyTemp: find(`${prefix}.sensors.temperature.supply`),
                         returnTemp: find([
                             `${prefix}.sensors.temperature.return`,
@@ -464,6 +465,7 @@
                 dhwTarget: find(['heating.dhw.temperature.main']),
                 dhwTarget2: find(['heating.dhw.temperature.temp2']),
                 dhwStatus: find(['heating.dhw.operating.modes.active']),
+                dhwChargingActive: findNested('heating.dhw.charging', 'active'),
                 dhwHysteresis: find(['heating.dhw.temperature.hysteresis']),
                 dhwHysteresisSwitchOn: findNested('heating.dhw.temperature.hysteresis', 'switchOnValue'),
                 dhwHysteresisSwitchOff: findNested('heating.dhw.temperature.hysteresis', 'switchOffValue'),

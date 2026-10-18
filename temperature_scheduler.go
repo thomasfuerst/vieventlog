@@ -470,6 +470,8 @@ func extractFeatureIntoSnapshot(feature Feature, snapshot *TemperatureSnapshot, 
 		snapshot.HPPrimaryCircuitSupplyTemp = getFloatValue(feature.Properties) // Air intake temperature (HP primary circuit)
 	case "heating.primaryCircuit.sensors.temperature.return":
 		snapshot.PrimaryReturnTemp = getFloatValue(feature.Properties) // Split / Sole system return (HP primary circuit)
+	case "heating.primaryCircuit.sensors.rotation":
+		snapshot.PrimaryPumpRotation = getFloatValue(feature.Properties)
 
 	// dashboard: secondarySupplyTemp: find(['heating.secondaryCircuit.sensors.temperature.supply']), sek. Vorlauf in ODU
 	case "heating.secondaryCircuit.sensors.temperature.supply":
@@ -593,8 +595,19 @@ func extractFeatureIntoSnapshot(feature Feature, snapshot *TemperatureSnapshot, 
 			}
 		}
 	case "heating.power.consumption.total":
-		// This is cumulative consumption (kWh), not instantaneous power - skip it
-		break
+		snapshot.PowerConsumptionTotalKWh = getDailyEnergyCounter(feature.Properties)
+	case "heating.power.consumption.dhw":
+		snapshot.PowerConsumptionDHWKWh = getDailyEnergyCounter(feature.Properties)
+	case "heating.power.consumption.heating":
+		snapshot.PowerConsumptionHeatingKWh = getDailyEnergyCounter(feature.Properties)
+	case "heating.power.consumption.summary.dhw":
+		if snapshot.PowerConsumptionDHWKWh == nil {
+			snapshot.PowerConsumptionDHWKWh = getSummaryEnergyCounter(feature.Properties, "currentDay")
+		}
+	case "heating.power.consumption.summary.heating":
+		if snapshot.PowerConsumptionHeatingKWh == nil {
+			snapshot.PowerConsumptionHeatingKWh = getSummaryEnergyCounter(feature.Properties, "currentDay")
+		}
 	case "heating.scop.total":
 		// This is Seasonal COP (average over weeks/months) - not useful for real-time monitoring
 		// We calculate instantaneous COP from thermal power and electrical power
@@ -605,6 +618,8 @@ func extractFeatureIntoSnapshot(feature Feature, snapshot *TemperatureSnapshot, 
 		snapshot.CirculationPumpActive = getPumpStatus(feature.Properties)
 	case "heating.dhw.pumps.circulation":
 		snapshot.DHWPumpActive = getPumpStatus(feature.Properties)
+	case "heating.dhw.charging":
+		snapshot.DHWChargingActive = getBoolValue(feature.Properties)
 	case "heating.boiler.pumps.internal":  // changed to use vaild keyword "heating.pumps.primary":
 		snapshot.InternalPumpActive = getPumpStatus(feature.Properties)
 
@@ -639,6 +654,26 @@ func extractFeatureIntoSnapshot(feature Feature, snapshot *TemperatureSnapshot, 
 	case "heating.secondaryHeatGenerator.status":
 		snapshot.SecondaryHeatGeneratorStatus = getStringValue(feature.Properties)
 	}
+}
+
+func getDailyEnergyCounter(properties map[string]interface{}) *float64 {
+	day, ok := properties["day"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	values, ok := day["value"].([]interface{})
+	if !ok || len(values) == 0 {
+		return nil
+	}
+	return getFloatValue(map[string]interface{}{"value": values[0]})
+}
+
+func getSummaryEnergyCounter(properties map[string]interface{}, period string) *float64 {
+	value, ok := properties[period].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	return getFloatValue(map[string]interface{}{"value": value["value"]})
 }
 
 // getFloatValue extracts a float64 value from feature properties
@@ -748,6 +783,9 @@ func calculateDerivedValues(snapshot *TemperatureSnapshot, fallbacks *powerFallb
 	settings, err := GetDeviceSettings(snapshot.AccountID, deviceKey)
 	if err == nil && settings.HasHotWaterBuffer != nil {
 		hasHotWaterBuffer = *settings.HasHotWaterBuffer
+	}
+	if err == nil {
+		calculateEnergyBalance(snapshot, settings)
 	}
 
 	var supplyTemp, returnTemp *float64
@@ -875,6 +913,55 @@ func calculateDerivedValues(snapshot *TemperatureSnapshot, fallbacks *powerFallb
 	}
 }
 
+
+// calculateEnergyBalance estimates thermal and electrical power of brine/water heat pumps
+// without flow or power sensors from nominal flows and temperature spreads:
+// heat output = secondary flow × ΔT, brine extraction = primary flow × pump rotation × ΔT,
+// electrical input = heat output − extraction.
+func calculateEnergyBalance(snapshot *TemperatureSnapshot, settings *DeviceSettings) {
+	const waterKWhPerLiterKelvin = 0.001163
+	// Ethylene glycol brine (~25 %): cp ≈ 3.9 kJ/(kg·K), ρ ≈ 1.04 kg/l
+	const brineKWhPerLiterKelvin = 0.00112
+
+	if settings.SecondaryFlowNominal <= 0 || snapshot.VolumetricFlow != nil || snapshot.ThermalPower != nil {
+		return
+	}
+	if snapshot.CompressorActive == nil || !*snapshot.CompressorActive {
+		return
+	}
+	if snapshot.HPSecondaryCircuitSupplyTemp == nil || snapshot.ReturnTemp == nil {
+		return
+	}
+
+	heatingDeltaT := *snapshot.HPSecondaryCircuitSupplyTemp - *snapshot.ReturnTemp
+	if heatingDeltaT <= 0 {
+		return
+	}
+	thermalKW := settings.SecondaryFlowNominal * heatingDeltaT * waterKWhPerLiterKelvin
+	snapshot.ThermalPower = &thermalKW
+
+	if settings.PrimaryFlowNominal <= 0 || snapshot.CompressorPower != nil ||
+		snapshot.HPPrimaryCircuitSupplyTemp == nil || snapshot.PrimaryReturnTemp == nil {
+		return
+	}
+	brineDeltaT := *snapshot.HPPrimaryCircuitSupplyTemp - *snapshot.PrimaryReturnTemp
+	if brineDeltaT <= 0 {
+		return
+	}
+	brineFlow := settings.PrimaryFlowNominal
+	if snapshot.PrimaryPumpRotation != nil && *snapshot.PrimaryPumpRotation > 0 {
+		brineFlow *= *snapshot.PrimaryPumpRotation / 100
+	}
+	extractionKW := brineFlow * brineDeltaT * brineKWhPerLiterKelvin
+	electricKW := thermalKW - extractionKW
+
+	// Reject implausible results caused by sensor lag right after compressor start.
+	if electricKW <= 0 || thermalKW/electricKW < 1.5 || thermalKW/electricKW > 8 {
+		return
+	}
+	electricW := electricKW * 1000
+	snapshot.CompressorPower = &electricW
+}
 
 // IsTemperatureSchedulerRunning returns whether the scheduler is currently running
 func IsTemperatureSchedulerRunning() bool {
