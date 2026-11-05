@@ -1215,7 +1215,7 @@ ${formatEventBody(event.body)}
             if (autoRefreshEnabled) {
                 btn.textContent = 'Auto-Refresh: An';
                 btn.style.background = '#10b981';
-                autoRefreshInterval = setInterval(loadEvents, 60000); // Every minute
+                autoRefreshInterval = setInterval(loadEvents, 300000); // Every 5 minutes
             } else {
                 btn.textContent = 'Auto-Refresh: Aus';
                 btn.style.background = '#667eea';
