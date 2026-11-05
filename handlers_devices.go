@@ -82,6 +82,17 @@ func deviceSettingsGetHandler(w http.ResponseWriter, r *http.Request) {
 		useOtherRefrigerantPicPtr = settings.UseOtherRefrigerantPic
 	}
 
+	// Schedules are shown by default
+	defaultTrue := true
+	showDhwSchedulePtr := &defaultTrue
+	if settings.ShowDhwSchedule != nil {
+		showDhwSchedulePtr = settings.ShowDhwSchedule
+	}
+	showCirculationSchedulePtr := &defaultTrue
+	if settings.ShowCirculationSchedule != nil {
+		showCirculationSchedulePtr = settings.ShowCirculationSchedule
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(DeviceSettingsResponse{
 		Success:                         true,
@@ -95,6 +106,8 @@ func deviceSettingsGetHandler(w http.ResponseWriter, r *http.Request) {
 		ShowCyclesPerDay:                showCyclesPerDayPtr,
 		ShowRefrigerantVisual:           showRefrigerantVisualPtr,
 		UseOtherRefrigerantPic:          useOtherRefrigerantPicPtr,
+		ShowDhwSchedule:                 showDhwSchedulePtr,
+		ShowCirculationSchedule:         showCirculationSchedulePtr,
 		SecondaryFlowNominal:            settings.SecondaryFlowNominal,
 		PrimaryFlowNominal:              settings.PrimaryFlowNominal,
 	})
@@ -165,6 +178,12 @@ func deviceSettingsSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.UseOtherRefrigerantPic != nil {
 		settings.UseOtherRefrigerantPic = req.UseOtherRefrigerantPic
+	}
+	if req.ShowDhwSchedule != nil {
+		settings.ShowDhwSchedule = req.ShowDhwSchedule
+	}
+	if req.ShowCirculationSchedule != nil {
+		settings.ShowCirculationSchedule = req.ShowCirculationSchedule
 	}
 	if req.SecondaryFlowNominal != nil && *req.SecondaryFlowNominal >= 0 && *req.SecondaryFlowNominal <= 20000 {
 		settings.SecondaryFlowNominal = *req.SecondaryFlowNominal
@@ -391,9 +410,7 @@ func dhwModeSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get access token for the account
-	accountsMutex.RLock()
-	token, exists := accountTokens[req.AccountID]
-	accountsMutex.RUnlock()
+	token, exists := getValidAccountToken(req.AccountID)
 
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -508,9 +525,7 @@ func dhwTemperatureSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get access token for the account
-	accountsMutex.RLock()
-	token, exists := accountTokens[req.AccountID]
-	accountsMutex.RUnlock()
+	token, exists := getValidAccountToken(req.AccountID)
 
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -625,9 +640,7 @@ func dhwTemperature2SetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get access token for the account
-	accountsMutex.RLock()
-	token, exists := accountTokens[req.AccountID]
-	accountsMutex.RUnlock()
+	token, exists := getValidAccountToken(req.AccountID)
 
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -758,9 +771,7 @@ func dhwHysteresisSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get access token for the account
-	accountsMutex.RLock()
-	token, exists := accountTokens[req.AccountID]
-	accountsMutex.RUnlock()
+	token, exists := getValidAccountToken(req.AccountID)
 
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -874,9 +885,7 @@ func dhwOneTimeChargeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get access token for the account
-	accountsMutex.RLock()
-	token, exists := accountTokens[req.AccountID]
-	accountsMutex.RUnlock()
+	token, exists := getValidAccountToken(req.AccountID)
 
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -993,9 +1002,7 @@ func heatingCurveSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get access token for the account
-	accountsMutex.RLock()
-	token, exists := accountTokens[req.AccountID]
-	accountsMutex.RUnlock()
+	token, exists := getValidAccountToken(req.AccountID)
 
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -1128,9 +1135,7 @@ func heatingModeSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get access token for the account
-	accountsMutex.RLock()
-	token, exists := accountTokens[req.AccountID]
-	accountsMutex.RUnlock()
+	token, exists := getValidAccountToken(req.AccountID)
 
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -1246,9 +1251,7 @@ func supplyTempMaxSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get access token for the account
-	accountsMutex.RLock()
-	token, exists := accountTokens[req.AccountID]
-	accountsMutex.RUnlock()
+	token, exists := getValidAccountToken(req.AccountID)
 
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -1398,9 +1401,7 @@ func roomTempSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get access token for the account
-	accountsMutex.RLock()
-	token, exists := accountTokens[req.AccountID]
-	accountsMutex.RUnlock()
+	token, exists := getValidAccountToken(req.AccountID)
 
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -1532,9 +1533,7 @@ func noiseReductionModeSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get access token for the account
-	accountsMutex.RLock()
-	token, exists := accountTokens[req.AccountID]
-	accountsMutex.RUnlock()
+	token, exists := getValidAccountToken(req.AccountID)
 
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -1649,9 +1648,7 @@ func fanRingToggleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get access token for the account
-	accountsMutex.RLock()
-	token, exists := accountTokens[req.AccountID]
-	accountsMutex.RUnlock()
+	token, exists := getValidAccountToken(req.AccountID)
 
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
